@@ -14,6 +14,7 @@ for(const path of files){const extension=extname(path).toLowerCase(),pathname='/
 mkdirSync(outputRoot,{recursive:true});mkdirSync(join(publicRoot,'.openai'),{recursive:true});
 copyFileSync(join(root,'worker','index.mjs'),join(outputRoot,'index.js'));
 copyFileSync(join(root,'worker','character-api.mjs'),join(outputRoot,'character-api.mjs'));
+copyFileSync(join(root,'worker','static-routing.mjs'),join(outputRoot,'static-routing.mjs'));
 writeFileSync(join(outputRoot,'assets.generated.mjs'),`export const ASSETS=${JSON.stringify(assets)};\n`);
 copyFileSync(join(root,'.openai','hosting.json'),join(publicRoot,'.openai','hosting.json'));
 console.log(`Built Worker with ${files.length} static assets.`);

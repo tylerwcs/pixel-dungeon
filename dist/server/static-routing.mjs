@@ -11,3 +11,9 @@ export function resolveStaticRoute(pathname, assets) {
   const indexPath = `${pathname}/index.html`;
   return assets[indexPath] ? { redirect: `${pathname}/` } : null;
 }
+
+export function cacheControlFor(pathname) {
+  return /\.(?:html|mjs|css)$/.test(pathname)
+    ? "no-cache"
+    : "public, max-age=3600";
+}

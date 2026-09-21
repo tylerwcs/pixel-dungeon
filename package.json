@@ -1,0 +1,13 @@
+{
+  "name": "pixel-dungeon-chase",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A local multiplayer pixel-art dungeon chase game for 1–4 players.",
+  "scripts": {
+    "build": "node scripts/build-site.mjs",
+    "dev": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests.mjs"
+  }
+}

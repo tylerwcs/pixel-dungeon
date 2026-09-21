@@ -29,7 +29,7 @@ export function createCharacterEditor(players,{changed,notify}){
     finally{if(sequence===fileSequence){loading=false;checkAfterUpload();}}
   };
   function checkAfterUpload(){if($('importError').textContent){$('saveCharacter').disabled=true;return;}check();}
-  $('saveCharacter').onclick=async()=>{if(loading||!editor)return;try{const asset=validateSettings(settings());await loadImage(asset.src);players[editor.player][editor.role]={...asset};await changed();$('characterDialog').close();notify('Character ready for the next chase.');}catch(e){$('importError').textContent=e.message;}};
+  $('saveCharacter').onclick=async()=>{if(loading||!editor)return;try{const asset=validateSettings(settings());await loadImage(asset.src);players[editor.player][editor.role]={...asset};players[editor.player].boothCharacterId=null;await changed();$('characterDialog').close();notify('Character ready for the next chase.');}catch(e){$('importError').textContent=e.message;}};
   $('resetCharacter').onclick=async()=>{if(!editor)return;players[editor.player][editor.role]=null;showRole(editor.role);await changed();notify('Default character restored.');};
   $('characterDialog').addEventListener('close',()=>{fileSequence++;editor=null;});
   return {

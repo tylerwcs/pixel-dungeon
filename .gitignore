@@ -1,4 +1,5 @@
 .sites-runtime/
+.env.local
 node_modules/
 *.tar.gz
 *.tar

@@ -30,7 +30,7 @@ The browser application remains in `dist/`. `npm run build` prepares the static 
 
 ## Vercel deployment
 
-The included `vercel.json` serves `dist/` and sends API routes through `api/[...path].mjs`. Add these environment variables to the Vercel project:
+The included `vercel.json` serves `dist/` and deploys the explicit nested routes in `api/` as Vercel Functions. Add these environment variables to the Vercel project:
 
 - `OPENAI_API_KEY`
 - `BLOB_READ_WRITE_TOKEN` for a private Vercel Blob store

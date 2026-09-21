@@ -16,4 +16,4 @@ const sessionStore={
   async put(id,lobby){const seconds=Math.max(60,Math.ceil((Date.parse(lobby.expiresAt)-Date.now())/1000));await redis.set(`lobby:${id}`,lobby,{ex:seconds});}
 };
 
-export default {async fetch(request){return handleAppApi(request,process.env,{characterStorage,sessionStore});}};
+export const vercelHandler={async fetch(request){return handleAppApi(request,process.env,{characterStorage,sessionStore});}};

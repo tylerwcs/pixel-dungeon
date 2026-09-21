@@ -7,6 +7,7 @@ const players=Array.from({length:4},(_,i)=>({control:i===0?'wasd':'ai',collector
 let state=newRound(players),lobby=true,muted=false,audio=null,pausedPhase='playing',pauseReason='',lastPhase='',lastCount=-1;
 let pads=[],padSignature='',toastTimer,boothCharacters=[],boothRefreshPending=false,boothSignature='';
 const render=createRenderer($('game'));
+const lobbyDialog=$('lobbyDialog');
 let storageWarning=false;
 async function savePreferences(){try{await writeSettings({version:1,muted,players:players.map(({booth,...p})=>({...p}))});}catch{if(!storageWarning){storageWarning=true;toast('Browser storage is unavailable. Changes will last for this visit only.');}}}
 const characterEditor=createCharacterEditor(players,{changed:async()=>{renderPlayers();await savePreferences();},notify:message=>toast(message)});
@@ -40,8 +41,9 @@ function renderPlayers(){
   $('play').innerHTML=lobby?'Start the chase <span>→</span>':'Chase in progress <span>✦</span>';
   $('startNote').textContent=humanCount()===0?'Choose a keyboard or gamepad to play.':!controlsValid()?'Reconnect the assigned gamepad to play.':`${boothCharacters.length} booth character${boothCharacters.length===1?'':'s'} ready · ${humanCount()} human${humanCount()===1?'':'s'} + ${4-humanCount()} AI`;
 }
-function start(){if(!lobby||!controlsValid())return false;activateAudio();state=newRound(players,state.collector,state.round);lobby=false;lastPhase='';renderPlayers();updateOverlay();return true;}
-function returnLobby(){const ended=state.phase==='result';lobby=true;state=newRound(players,ended?nextCollector(players,state.collector):state.collector,state.round+(ended?1:0));lastPhase='';renderPlayers();updateOverlay();}
+function openLobby(){if(!lobbyDialog.open)lobbyDialog.showModal();}
+function start(){if(!lobby||!controlsValid())return false;activateAudio();state=newRound(players,state.collector,state.round);lobby=false;if(lobbyDialog.open)lobbyDialog.close();lastPhase='';renderPlayers();updateOverlay();return true;}
+function returnLobby(){const ended=state.phase==='result';lobby=true;state=newRound(players,ended?nextCollector(players,state.collector):state.collector,state.round+(ended?1:0));lastPhase='';renderPlayers();updateOverlay();openLobby();}
 function nextRound(){state=newRound(players,nextCollector(players,state.collector),state.round+1);lobby=false;lastPhase='';renderPlayers();updateOverlay();}
 function pause(reason='Take a breather. The dungeon can wait.'){
   if(lobby||!['countdown','playing'].includes(state.phase))return;
@@ -52,7 +54,7 @@ function togglePause(){if(state.phase==='paused')resume();else pause();}
 function updateOverlay(){
   const phase=lobby?'lobby':state.phase,count=Math.ceil(state.countdown);if(phase===lastPhase&&(phase!=='countdown'||count===lastCount))return;lastPhase=phase;lastCount=count;
   const overlay=$('overlay');overlay.hidden=phase==='playing';$('pause').disabled=lobby||phase==='result';$('pause').textContent=phase==='paused'?'▶ Resume':'Ⅱ Pause';
-  if(phase==='lobby'){overlay.innerHTML='<div class="overlay-card"><span class="eyebrow">THE DUNGEON IS WAITING</span><h2>Ready to make<br>a run for it?</h2><p>Gather the gold. Dodge the monsters.<br>Don’t get caught.</p><button id="boardPlay" class="primary-button">Enter the dungeon <span>→</span></button><span class="overlay-note">1–4 PLAYERS · ONE SCREEN</span></div>';$('boardPlay').onclick=start;$('boardPlay').disabled=!controlsValid();}
+  if(phase==='lobby'){overlay.innerHTML='<div class="overlay-card"><span class="eyebrow">THE DUNGEON IS WAITING</span><h2>Ready to make<br>a run for it?</h2><p>Gather the gold. Dodge the monsters.<br>Don’t get caught.</p><button id="boardPlay" class="primary-button">Open matchmaking lobby <span>→</span></button><span class="overlay-note">1–4 PLAYERS · ONE SCREEN</span></div>';$('boardPlay').onclick=openLobby;}
   if(phase==='countdown'){overlay.innerHTML=`<div class="overlay-card" aria-live="polite"><span class="eyebrow">PLAYER ${state.collector+1} COLLECTS</span><div class="countdown-number">${count}</div><p>Get ready. The chase is on.</p></div>`;}
   if(phase==='paused'){overlay.innerHTML='<div class="overlay-card"><span class="eyebrow">A MOMENT OF PEACE</span><h2>Chase paused.</h2><p id="pauseReason"></p><button id="resume" class="primary-button">Back to the chase <span>→</span></button><br><button id="leave" class="secondary-button">Return to lobby</button></div>';$('pauseReason').textContent=pauseReason;$('resume').onclick=resume;$('leave').onclick=returnLobby;}
   if(phase==='result'){const won=state.winner==='collector';overlay.innerHTML=`<div class="overlay-card" role="status"><span class="eyebrow">ROUND ${String(state.round).padStart(2,'0')} COMPLETE</span><h2>${won?'A golden escape!':'Caught in the act.'}</h2><p>${won?`Player ${state.collector+1} collected every coin.`:'The pursuers win this round.'}<br>${state.collected} / ${state.total} coins · ${Math.floor(state.elapsed)} seconds</p><button id="continue" class="primary-button">Next round <span>→</span></button><br><button id="leave" class="secondary-button">Return to lobby</button><span class="overlay-note">PLAYER ${nextCollector(players,state.collector)+1} COLLECTS NEXT</span></div>`;$('continue').onclick=nextRound;$('leave').onclick=returnLobby;}
@@ -73,6 +75,7 @@ function pollPads(){
 function updateSound(){$('sound').textContent=muted?'♪̸':'♫';$('sound').setAttribute('aria-label',muted?'Unmute sound':'Mute sound');$('sound').setAttribute('aria-pressed',String(muted));}
 function toggleSound(){muted=!muted;updateSound();savePreferences();}
 $('sound').onclick=toggleSound;$('play').onclick=start;$('boardPlay').onclick=start;$('pause').onclick=togglePause;
+$('lobbyDialog').addEventListener('cancel',event=>{if(lobby)event.preventDefault();});
 $('help').onclick=()=>{pause();$('helpDialog').showModal();};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('boardWrap').requestFullscreen();}catch{toast('Full screen is unavailable in this browser view.');}};
 function openEditor(i){characterEditor.open(i);}
@@ -85,7 +88,7 @@ await Promise.all(Object.values(defaults).map(a=>loadImage(a.src))).catch(()=>to
   try{const saved=await readSettings();if(saved?.version===1&&Array.isArray(saved.players)&&saved.players.length===4){const used=new Set();for(let i=0;i<4;i++){const p=saved.players[i],control=p?.control;if(typeof control==='string'&&(/^(wasd|arrows|ai)$/.test(control)||/^pad:\d+$/.test(control))&&(control==='ai'||!used.has(control))){players[i].control=control;used.add(control);}else players[i].control='ai';players[i].boothCharacterId=typeof p?.boothCharacterId==='string'?p.boothCharacterId:null;for(const role of ['collector','pursuer'])if(p?.[role]){try{const a=validateSettings(p[role]);if(typeof a.src!=='string'||(!a.src.startsWith('data:image/png;base64,')&&!Object.values(defaults).some(d=>d.src===a.src)))continue;await loadImage(a.src);players[i][role]=a;}catch{toast('A saved character could not load. Its default has been restored.');}}}if(!humanCount())players[0].control='wasd';muted=!!saved.muted;state=newRound(players);}}catch{storageWarning=true;toast('Browser storage is unavailable. You can still play and import characters for this visit.');}
   await refreshBoothCharacters();setInterval(()=>{if(lobby)refreshBoothCharacters();},4000);
 updateSound();
-renderPlayers();updateOverlay();requestAnimationFrame(frame);
+renderPlayers();updateOverlay();openLobby();requestAnimationFrame(frame);
 if(document.modelContext?.registerTool){
   const life=new AbortController();window.addEventListener('pagehide',()=>life.abort(),{once:true});
   const snapshot=()=>({phase:lobby?'lobby':state.phase,round:state.round,collector:state.collector+1,coinsRemaining:state.coins.size,humanPlayers:humanCount()});

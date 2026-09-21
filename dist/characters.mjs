@@ -1,4 +1,4 @@
-import {defaults,loadImage,drawSprite} from './render.mjs';
+import {defaults,loadImage,drawSprite} from './render.mjs?v=sprite-anchor-1';
 export function validateSettings(asset){
   for(const [field,max]of [['cols',32],['rows',32],['fps',24]])if(!Number.isInteger(asset[field])||asset[field]<1||asset[field]>max)throw new Error(`${field==='cols'?'Columns':field==='rows'?'Rows':'Frames per second'} must be a whole number from 1 to ${max}.`);
   if(!['single','directional'].includes(asset.layout))throw new Error('Choose an animation layout.');

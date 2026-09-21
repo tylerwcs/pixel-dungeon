@@ -1,10 +1,34 @@
 import {MAP,WIDTH,HEIGHT,COLORS,DIRS,position} from './engine.mjs';
 export const cache=new Map();
+const frameCache=new Map();
 export function loadImage(src){if(cache.has(src))return Promise.resolve(cache.get(src));return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{cache.set(src,img);resolve(img);};img.onerror=()=>reject(new Error('This PNG could not be opened.'));img.src=src;});}
 export const defaults={collector:{src:'assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon adventurer'},pursuer:{src:'assets/monster.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon monster'}};
+
+export function detectSpriteFrames(alpha,width,height,cols=4,rows=4,threshold=24){
+  if(!alpha||alpha.length!==width*height||cols<1||rows<1)return null;
+  const frames=Array.from({length:rows},()=>[]);let maxWidth=0,maxHeight=0;
+  for(let row=0;row<rows;row+=1){
+    const top=Math.floor(row*height/rows),bottom=Math.floor((row+1)*height/rows),active=new Uint8Array(width);
+    for(let y=top;y<bottom;y+=1)for(let x=0;x<width;x+=1)if(alpha[y*width+x]>threshold)active[x]=1;
+    const groups=[];for(let x=0;x<width;){while(x<width&&!active[x])x+=1;if(x>=width)break;const start=x;while(x<width&&active[x])x+=1;groups.push({start,end:x-1});}
+    while(groups.length>cols){let merge=0,gap=Infinity;for(let index=0;index<groups.length-1;index+=1){const nextGap=groups[index+1].start-groups[index].end-1;if(nextGap<gap){gap=nextGap;merge=index;}}groups.splice(merge,2,{start:groups[merge].start,end:groups[merge+1].end});}
+    if(groups.length!==cols)return null;
+    for(const group of groups){let minX=width,minY=bottom,maxX=-1,maxY=-1;for(let y=top;y<bottom;y+=1)for(let x=group.start;x<=group.end;x+=1)if(alpha[y*width+x]>threshold){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}if(maxX<minX||maxY<minY)return null;const frame={x:minX,y:minY,width:maxX-minX+1,height:maxY-minY+1};frames[row].push(frame);maxWidth=Math.max(maxWidth,frame.width);maxHeight=Math.max(maxHeight,frame.height);}
+  }
+  return {frames,maxWidth,maxHeight};
+}
+
+function frameAtlas(img,asset){
+  if(asset.layout!=='directional')return null;const key=`${asset.src}|${asset.cols}x${asset.rows}`;if(frameCache.has(key))return frameCache.get(key);
+  let atlas=null;try{const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;const context=canvas.getContext('2d',{willReadFrequently:true});context.drawImage(img,0,0);const rgba=context.getImageData(0,0,img.width,img.height).data,alpha=new Uint8Array(img.width*img.height);for(let source=3,target=0;source<rgba.length;source+=4,target+=1)alpha[target]=rgba[source];atlas=detectSpriteFrames(alpha,img.width,img.height,asset.cols,asset.rows);}catch{}
+  frameCache.set(key,atlas);return atlas;
+}
+
 export function drawSprite(ctx,asset,x,y,size,time=0,facing='down',moving=true){
   const img=cache.get(asset.src);if(!img)return;
   const col=moving?Math.floor(time*asset.fps)%asset.cols:0,row=asset.layout==='directional'?DIRS[facing].row:0;
+  const atlas=frameAtlas(img,asset),frame=atlas?.frames[row]?.[col];
+  if(frame){const scale=size*.84/Math.max(atlas.maxWidth,atlas.maxHeight),w=frame.width*scale,h=frame.height*scale,baseline=y+size*.42;ctx.imageSmoothingEnabled=false;ctx.drawImage(img,frame.x,frame.y,frame.width,frame.height,Math.round(x-w/2),Math.round(baseline-h),Math.round(w),Math.round(h));return;}
   const sw=img.width/asset.cols,sh=img.height/asset.rows,scale=size/Math.max(sw,sh),w=sw*scale,h=sh*scale;
   ctx.imageSmoothingEnabled=false;ctx.drawImage(img,col*sw,row*sh,sw,sh,Math.round(x-w/2),Math.round(y-h/2),Math.round(w),Math.round(h));
 }

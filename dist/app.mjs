@@ -1,5 +1,5 @@
 import {newRound,nextCollector,step,COLORS} from './engine.mjs';
-import {loadImage,drawSprite,defaults,createRenderer} from './render.mjs';
+import {loadImage,drawSprite,defaults,createRenderer} from './render.mjs?v=sprite-anchor-1';
 import {createCharacterEditor,readSettings,writeSettings,validateSettings} from './characters.mjs';
 import {connectedPads,controlsAvailable,gamepadDirection} from './input.mjs';
 import {drawQR} from './qr.mjs';

@@ -11,11 +11,17 @@ const json=(body,status=200,extra={})=>new Response(JSON.stringify(body),{status
 const characterRecord=(id,name,createdAt)=>({id,name,createdAt,imageUrl:`/api/characters/${id}/image`,cols:4,rows:4,fps:8,layout:'directional'});
 
 export function buildCharacterPrompt(){
-  return `Edit the person in the supplied photo into one production-ready character sprite sheet for a cozy top-down dungeon chase game. Preserve their recognizable face, skin tone, hairstyle, hair color, and distinctive visible accessories while simplifying them into crisp 16-bit pixel art. Dress them as a friendly fantasy dungeon adventurer with practical boots and a short cape. Do not add a weapon.
+  return `Edit the person in the supplied photo into one production-ready character sprite sheet for a cozy top-down dungeon chase game. Preserve their recognizable face, skin tone, hairstyle, hair color, body proportions, and distinctive visible accessories.
 
-Layout is strict: exactly 4 equal columns by 4 equal rows, with 16 full-body sprites at identical scale and baseline. Row 1 faces DOWN toward the viewer. Row 2 faces LEFT in profile. Row 3 faces RIGHT in profile. Row 4 faces UP away from the viewer. Each row contains four consecutive walk-cycle poses: left step, passing pose, right step, passing pose.
+OUTFIT FIDELITY IS ESSENTIAL: reproduce the same visible outfit from the photo, including the exact garment types, colors, patterns, sleeves, trousers or skirt, footwear, headwear, eyewear, jewelry, and accessories. Simplify those real clothes into pixel art, but do not redesign or replace them with a fantasy costume. Do not invent a cape, armor, belt, boots, hat, weapon, bag, or accessory that is not visible in the source photo. If part of the outfit is obscured, continue it conservatively using the visible colors and materials.
 
-Use chunky pixel clusters, hard pixel edges, a limited warm dungeon palette, a dark outline, and minimal shading. Keep generous transparent margins around every sprite. The entire canvas outside the character must be true transparent alpha. No scenery, floor, grid lines, labels, text, watermark, shadows, border, extra people, weapons, or loose objects.`;
+Asset type: one 1024 by 1024 PNG sprite sheet containing exactly 16 full-body sprites in exactly 4 equal columns by 4 equal rows. Every cell is exactly 256 by 256 pixels. Cell centers are x=128, 384, 640, 896 and y=128, 384, 640, 896. Keep each complete character wholly inside its own cell; no pixel from one sprite may cross a cell boundary. Center every frame horizontally at x=128 within its cell, use one identical character scale, and keep the ground-contact foot and character pivot on the same y=232 baseline within every cell.
+
+Direction order is strict. Row 1 faces DOWN toward the viewer. Row 2 faces LEFT in profile. Row 3 faces RIGHT in profile. Row 4 faces UP away from the viewer. Each row contains four consecutive walk-cycle poses: left step, passing pose, right step, passing pose. Only the limbs and clothing motion may change. The identity, outfit, scale, body center, and foot anchor must stay fixed across all 16 frames.
+
+Style: cute tiny classic handheld RPG character, crisp 16-bit pixel art, simple readable chunky pixel clusters, hard pixel edges, limited colors, dark warm outline, and minimal shading. Suitable for a 24-to-32-pixel in-game character and an 80-pixel lobby portrait. No antialiasing, blur, soft painted edges, or subpixel detail.
+
+The entire canvas outside the character must be true transparent alpha. No scenery, floor, glow, gradient, grid lines, labels, text, watermark, shadows, border, extra people, weapons, or loose objects.`;
 }
 
 export function validatePhoto(photo){

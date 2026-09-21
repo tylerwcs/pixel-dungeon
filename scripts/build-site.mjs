@@ -4,6 +4,8 @@ import {fileURLToPath} from 'node:url';
 
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const publicRoot=join(root,'dist'),outputRoot=join(publicRoot,'server');
+mkdirSync(join(publicRoot,'vendor'),{recursive:true});
+copyFileSync(join(root,'node_modules','qrcode-generator','dist','qrcode.mjs'),join(publicRoot,'vendor','qrcode.mjs'));
 const types={'.css':'text/css; charset=utf-8','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.png':'image/png'};
 const textTypes=new Set(['.css','.html','.mjs']);
 const files=[];
@@ -14,6 +16,9 @@ for(const path of files){const extension=extname(path).toLowerCase(),pathname='/
 mkdirSync(outputRoot,{recursive:true});mkdirSync(join(publicRoot,'.openai'),{recursive:true});
 copyFileSync(join(root,'worker','index.mjs'),join(outputRoot,'index.js'));
 copyFileSync(join(root,'worker','character-api.mjs'),join(outputRoot,'character-api.mjs'));
+copyFileSync(join(root,'worker','app-api.mjs'),join(outputRoot,'app-api.mjs'));
+copyFileSync(join(root,'worker','lobby-api.mjs'),join(outputRoot,'lobby-api.mjs'));
+copyFileSync(join(root,'worker','tokens.mjs'),join(outputRoot,'tokens.mjs'));
 copyFileSync(join(root,'worker','static-routing.mjs'),join(outputRoot,'static-routing.mjs'));
 writeFileSync(join(outputRoot,'assets.generated.mjs'),`export const ASSETS=${JSON.stringify(assets)};\n`);
 copyFileSync(join(root,'.openai','hosting.json'),join(publicRoot,'.openai','hosting.json'));

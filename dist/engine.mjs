@@ -30,7 +30,7 @@ export function newRound(players,collector=0,round=1){
   const actors=players.map((p,i)=>{const isCollector=i===collectorIndex;const role=isCollector?0:++enemy;return {id:i,human:p.control!=='ai',control:p.control,collector:isCollector,...SPAWNS[role],dir:null,facing:'down',queued:null,target:null,progress:0,speed:isCollector?4.5:3.8,aiKind:role-1};});
   const coins=new Set();for(let y=0;y<HEIGHT;y++)for(let x=0;x<WIDTH;x++)if(open(x,y))coins.add(key(x,y));
   const c=actors[collectorIndex];coins.delete(key(c.x,c.y));
-  return {actors,collector:collectorIndex,coins,total:coins.size,phase:'countdown',countdown:3,elapsed:0,round,winner:null,collected:0};
+  return {actors,collector:collectorIndex,coins,total:coins.size,phase:'countdown',countdown:5,elapsed:0,round,winner:null,collected:0};
 }
 export function position(a){return a.target?{x:a.x+(a.target.x-a.x)*a.progress,y:a.y+(a.target.y-a.y)*a.progress}:{x:a.x,y:a.y};}
 export function sweptContact(a0,a1,b0,b1,radius=.58){

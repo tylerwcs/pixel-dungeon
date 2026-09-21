@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { handleCharacterApi } from "../worker/character-api.mjs";
+import { handleAppApi } from "../worker/app-api.mjs";
 
 const projectRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const staticRoot = resolve(projectRoot, "dist");
@@ -14,6 +14,7 @@ if (existsSync(envFile)) for (const line of readFileSync(envFile, "utf8").split(
 const requestedPort = Number.parseInt(process.env.PORT ?? "4173", 10);
 const port = Number.isFinite(requestedPort) ? requestedPort : 4173;
 const localCharacters = new Map();
+const localLobbies = new Map();
 
 const contentTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -45,10 +46,10 @@ async function apiRequest(request, response) {
   const mockFetch = process.env.MOCK_CHARACTER_API === "1"
     ? async () => new Response(JSON.stringify({ data: [{ b64_json: readFileSync(join(staticRoot, "assets", "adventurer.png")).toString("base64") }] }), { status: 200, headers: { "content-type": "application/json" } })
     : undefined;
-  const webResponse = await handleCharacterApi(webRequest, {
+  const webResponse = await handleAppApi(webRequest, {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY || (mockFetch ? "local-mock" : ""),
     OPENAI_IMAGE_MODEL: process.env.OPENAI_IMAGE_MODEL,
-  }, { store: localCharacters, ...(mockFetch ? { fetchImpl: mockFetch } : {}) });
+  }, { store: localCharacters, lobbyStore: localLobbies, ...(mockFetch ? { fetchImpl: mockFetch } : {}) });
   response.writeHead(webResponse.status, Object.fromEntries(webResponse.headers));
   response.end(Buffer.from(await webResponse.arrayBuffer()));
 }
@@ -71,7 +72,7 @@ function resolveRequestPath(requestUrl) {
 }
 
 const server = createServer(async (request, response) => {
-  if (new URL(request.url ?? "/", "http://127.0.0.1").pathname.startsWith("/api/characters")) {
+  if (new URL(request.url ?? "/", "http://127.0.0.1").pathname.startsWith("/api/")) {
     await apiRequest(request, response);
     return;
   }

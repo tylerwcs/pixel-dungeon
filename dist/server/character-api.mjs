@@ -1,3 +1,5 @@
+import {hashToken,randomToken,tokenMatches,validId} from './tokens.mjs';
+
 const MAX_PHOTO_BYTES=8*1024*1024;
 const MAX_CHARACTER_BYTES=6*1024*1024;
 const ALLOWED_PHOTO_TYPES=new Set(['image/jpeg','image/png','image/webp']);
@@ -39,19 +41,17 @@ export function resetGenerationRateLimits(){buckets.clear();}
 function sameOrigin(request){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return false;return request.headers.get('sec-fetch-site')!=='cross-site';}
 function friendlyOpenAIError(status,code){if(code==='credit_balance_exhausted'||code==='insufficient_quota')return 'The photo booth has no API credits remaining. Ask the event host to add credits before trying again.';if(status===429)return 'The character forge is busy right now. Wait a moment and try again.';if(status===400)return 'OpenAI could not use that photo. Try a clear, well-lit photo with one person.';if(status===401||status===403)return 'The character forge is not configured correctly yet.';return 'The character could not be generated. Please try again.';}
 function decodeBase64(value){const binary=atob(value),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return bytes;}
-function validId(value){return /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value);}
-
 function memoryStorage(map){return {
   async list(){return [...map.entries()].map(([id,item])=>characterRecord(id,item.name,item.createdAt)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));},
   async get(id){return map.get(id)||null;},
-  async put(id,bytes,metadata){map.set(id,{bytes,name:metadata.name,createdAt:metadata.createdAt,contentType:'image/png'});}
+  async put(id,bytes,metadata){map.set(id,{bytes,...metadata,contentType:'image/png'});}
 };}
 function r2Storage(bucket){return {
   async list(){const listed=await bucket.list({prefix:'characters/',limit:100,include:['customMetadata']});return listed.objects.map(item=>{const id=item.key.slice('characters/'.length,-'.png'.length),meta=item.customMetadata||{};return characterRecord(id,meta.name||'Booth character',meta.createdAt||item.uploaded.toISOString());}).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));},
-  async get(id){const object=await bucket.get(`characters/${id}.png`);if(!object)return null;return {bytes:object.body,contentType:object.httpMetadata?.contentType||'image/png',etag:object.httpEtag};},
+  async get(id){const object=await bucket.get(`characters/${id}.png`);if(!object)return null;return {bytes:object.body,contentType:object.httpMetadata?.contentType||'image/png',etag:object.httpEtag,...object.customMetadata};},
   async put(id,bytes,metadata){await bucket.put(`characters/${id}.png`,bytes,{httpMetadata:{contentType:'image/png',cacheControl:'public, max-age=31536000, immutable'},customMetadata:metadata});}
 };}
-function storageFor(env,options){if(options.store instanceof Map)return memoryStorage(options.store);if(env.CHARACTERS)return r2Storage(env.CHARACTERS);return null;}
+export function createCharacterStorage(env={},options={}){if(options.characterStorage)return options.characterStorage;if(options.store instanceof Map)return memoryStorage(options.store);if(env.CHARACTERS)return r2Storage(env.CHARACTERS);return null;}
 
 async function generateCharacter(request,env,options,storage){
   if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);
@@ -68,13 +68,16 @@ async function generateCharacter(request,env,options,storage){
   let result;try{result=await generated.json();}catch{return json({error:'The character service returned an unreadable image.'},502);}
   const encoded=result?.data?.[0]?.b64_json;if(typeof encoded!=='string'||!encoded.length)return json({error:'No character image was returned. Please try again.'},502);
   let bytes;try{bytes=decodeBase64(encoded);}catch{return json({error:'The generated image could not be decoded.'},502);}if(bytes.byteLength>MAX_CHARACTER_BYTES)return json({error:'The generated character was too large to save. Please try again.'},502);
-  const id=crypto.randomUUID(),createdAt=new Date(options.now?.()??Date.now()).toISOString();await storage.put(id,bytes,{name,createdAt});return json({character:characterRecord(id,name,createdAt)},201);
+  const id=crypto.randomUUID(),createdAt=new Date(options.now?.()??Date.now()).toISOString(),claimToken=randomToken(),claimHash=await hashToken(claimToken);await storage.put(id,bytes,{name,createdAt,claimHash});const character=characterRecord(id,name,createdAt),origin=new URL(request.url).origin;return json({character,claimToken,passUrl:`${origin}/pass/?character=${id}#claim=${encodeURIComponent(claimToken)}`},201);
 }
 
 export async function handleCharacterApi(request,env={},options={}){
-  const url=new URL(request.url),storage=storageFor(env,options);if(!storage)return json({error:'Shared character storage is not configured.'},503);
-  if(url.pathname==='/api/characters'&&request.method==='GET'){const characters=await storage.list();return json({characters:characters.slice(0,60)});}
+  const url=new URL(request.url),storage=createCharacterStorage(env,options);if(!storage)return json({error:'Shared character storage is not configured.'},503);
+  if(url.pathname==='/api/characters'&&request.method==='GET'){const characters=await storage.list();return json({count:Math.min(characters.length,60)});}
   if(url.pathname==='/api/characters/generate'&&request.method==='POST')return generateCharacter(request,env,options,storage);
+  const pass=url.pathname.match(/^\/api\/characters\/([^/]+)\/pass$/);if(pass&&request.method==='POST'){
+    if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);const id=pass[1];if(!validId(id))return json({error:'Character not found.'},404);let input;try{input=await request.json();}catch{return json({error:'The character pass could not be read.'},400);}const item=await storage.get(id);if(!item||!await tokenMatches(input.claimToken,item.claimHash))return json({error:'This character pass is invalid.'},403);return json({character:characterRecord(id,item.name||'Player character',item.createdAt||new Date().toISOString())});
+  }
   const image=url.pathname.match(/^\/api\/characters\/([^/]+)\/image$/);if(image&&request.method==='GET'){
     const id=image[1];if(!validId(id))return new Response('Not found',{status:404});const item=await storage.get(id);if(!item)return new Response('Not found',{status:404});return new Response(item.bytes,{headers:{'content-type':item.contentType||'image/png','cache-control':'public, max-age=31536000, immutable',...(item.etag?{etag:item.etag}:{})}});
   }

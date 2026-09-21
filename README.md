@@ -10,23 +10,35 @@ A local multiplayer browser game for 1–4 people: one collector, three pursuers
 - Escape pauses/resumes, M toggles sound. Losing focus or disconnecting an assigned controller pauses the game; resuming is explicit.
 - The collector moves at 4.5 tiles/second; pursuers at 3.8. Catch collision takes precedence over the last coin.
 
-## Custom characters
+## Character passes and matchmaking
 
-Use the pencil button on a player card. Collector and pursuer appearances are separate. Import a PNG still image (1 column, 1 row), a single-row walking strip, or a directional sheet with exactly four rows: down, left, right, up. Set the column count and frame rate, inspect the animated preview, then choose **Use character**. PNGs can be up to 5 MB and 4096 × 4096 pixels. Transparent backgrounds work best. All cells must be equally sized and the character centered. Artwork never determines collision size.
+The separate `/booth/` page is designed to run at the photo station while the game screen remains available. A visitor enters a name, uploads a JPEG, PNG, or WebP photo or takes a camera snapshot, and chooses **Create pixel character**. The server sends that photo to the OpenAI Images API, stores the completed transparent 4×4 sprite sheet, and returns a private character-pass QR. The original photo is not retained by this application.
 
-The separate `/booth/` page is designed to run on another device or station while the game continues. A visitor enters a character name, uploads a JPEG, PNG, or WebP image or takes a camera snapshot, and chooses **Create pixel character**. The photo is sent to the OpenAI Images API and discarded by the game after generation. The completed transparent 4×4 sprite sheet is stored in the shared character library.
+The visitor scans the result QR once to save the private character pass in their phone browser. They can also download the PNG as a backup. At the game screen, each of the four fullscreen matchmaking quadrants has its own short-lived invitation QR. Scanning a slot from the phone holding the pass lets the visitor join that slot and ready up with one tap. No sign-in or manual code entry is required.
 
-Open game lobbies refresh that library automatically every few seconds. Each player card includes a character list, so newly completed booth characters appear without reloading or interrupting a round. Selecting a booth character applies it to that player in both roles. The pencil editor remains available for device-local, role-specific PNG imports.
+The game host polls its lobby session, loads claimed characters automatically, and assigns available local controls. Empty slots can be filled with AI. Once every slot is filled and every human player is ready, the five-second game countdown starts automatically. Character artwork never changes collision size.
 
-The editor links to the included 4×4 adventurer sheet as a downloadable example. Characters, controls, and mute state stay in this browser via IndexedDB; no images are sent to a server. Each web origin has separate saved settings, so the local preview and hosted game do not share imports.
+Character-pass secrets are kept out of server metadata and are only placed in the URL fragment while the pass moves from the booth to the phone. Lobby invitations expire after four hours; Vercel character-pass metadata is retained for seven days. Treat both QRs as private during an event.
 
 ## Source and local development
 
 This folder is a self-contained Codex-ready Git project. Open this directory as a local project in Codex so it can discover `AGENTS.md`, use the repository history, and run the documented commands.
 
-No package installation is required. Set `OPENAI_API_KEY` in the server environment to enable photo generation, start the local preview with `npm run dev`, then open `http://127.0.0.1:4173`. `OPENAI_IMAGE_MODEL` can override the default image-edit model. For UI work without making an API request, set `MOCK_CHARACTER_API=1`. Run automated verification with `npm test`.
+Install dependencies with `npm install`. Set `OPENAI_API_KEY` in the server environment to enable photo generation, start the local preview with `npm run dev`, then open `http://127.0.0.1:4173`. `OPENAI_IMAGE_MODEL` can override the default image-edit model. For UI work without making an API request, set `MOCK_CHARACTER_API=1`. Run automated verification with `npm test`.
 
-The browser application remains in `dist/`. `npm run build` adds a Cloudflare Worker entrypoint that serves those files, securely proxies photo generation, and stores completed sprites in the configured `CHARACTERS` R2 binding. The OpenAI API key is never exposed to the browser. JavaScript modules require HTTP rather than opening index.html directly from disk.
+The browser application remains in `dist/`. `npm run build` prepares the static bundle and its Worker files. The OpenAI API key is never exposed to the browser. JavaScript modules require HTTP rather than opening `index.html` directly from disk.
+
+## Vercel deployment
+
+The included `vercel.json` serves `dist/` and sends API routes through `api/[...path].mjs`. Add these environment variables to the Vercel project:
+
+- `OPENAI_API_KEY`
+- `BLOB_READ_WRITE_TOKEN` for a private Vercel Blob store
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+- `OPENAI_IMAGE_MODEL` only when overriding the default model
+
+Vercel Blob stores sprite PNGs. Upstash Redis stores character metadata, the recent-character index, and short-lived lobby sessions. Run `npm run build` and `npm test` before deploying. The repository does not make an OpenAI request during build, tests, or ordinary lobby/gameplay use; credits are used only after a visitor submits a photo for generation.
 
 The simulation is in `dist/engine.mjs`, rendering in `dist/render.mjs`, control normalization in `dist/input.mjs`, and the PNG editor/storage in `dist/characters.mjs`. The page uses Canvas 2D and semantic HTML menus. No runtime framework, backend, API key, or account system is required for gameplay. Fonts use Google Fonts with local sans-serif fallbacks.
 
@@ -36,7 +48,7 @@ Generated character PNGs are included under `dist/assets/`. Built-in imagegen cr
 
 ## Verification
 
-19 automated checks cover connected maze/coins, 1–4-player setup, countdown, walls, buffered turns, deterministic movement, pause, crossing collisions, catch/coin precedence, both victory conditions, role rotation, AI navigation, PNG/settings validation, shared photo-booth publishing and quota errors, art-independent collision size, and mixed keyboard/gamepad input/disconnection conditions.
+23 automated checks cover connected maze/coins, 1–4-player setup, countdown, walls, buffered turns, deterministic movement, pause, crossing collisions, catch/coin precedence, both victory conditions, role rotation, AI navigation, PNG/settings validation, secure character-pass publishing, lobby claiming/readiness, quota errors, art-independent collision size, static routes, cache revalidation, and mixed keyboard/gamepad input/disconnection conditions.
 
 Browser QA covers lobby assignment and duplicate-control prevention, directional-sheet import, invalid-file errors, animation preview, save/reload persistence, reset, start/pause, and narrow desktop layout. Structured game-state/start/pause tools were exercised through WebMCP, including invalid inputs and invalid-state errors.
 

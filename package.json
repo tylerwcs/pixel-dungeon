@@ -9,5 +9,10 @@
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "test": "node --test tests.mjs"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.38.4",
+    "@vercel/blob": "^2.8.0",
+    "qrcode-generator": "^2.0.4"
   }
 }

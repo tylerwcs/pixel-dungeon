@@ -1,1 +1,37 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Join the Party · Pixel Dungeon Chase</title><link rel="stylesheet" href="../style.css?v=celestial-3"><link rel="stylesheet" href="../handoff.css?v=celestial-3"></head><body><main class="handoff-shell"><section class="handoff-card"><p class="eyebrow">CELESTIAL MATCHMAKING</p><div class="slot-number" id="slotNumber">—</div><h1>Join this player slot</h1><p class="handoff-copy" id="joinCopy">Use the character pass saved on this phone.</p><div id="savedPass" hidden><div class="pass-preview"><img id="joinImage" alt="Saved pixel character"><div><h2 id="joinName">Your character</h2><p id="joinSlotLabel">Ready to join.</p></div></div><div class="handoff-actions"><button id="claimSlot" class="primary-button">Use this character <span>→</span></button><button id="readySlot" class="primary-button" hidden>I’m ready <span>✓</span></button><button id="clearPass" class="secondary-button">Use another character</button></div></div><div id="noPass" class="empty-pass" hidden><p>No character pass is saved on this phone yet.</p><a class="primary-button" href="../booth/">Create a character <span>→</span></a></div><p id="joinStatus" class="handoff-status" role="status"></p></section></main><script type="module" src="join.mjs?v=celestial-3"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Choose Your Slot · Pixel Dungeon Chase</title>
+  <link rel="stylesheet" href="../style.css?v=celestial-5">
+  <link rel="stylesheet" href="../handoff.css?v=lobby-5">
+</head>
+<body class="join-page">
+  <main class="slot-picker-shell">
+    <section class="slot-picker-card" aria-labelledby="slotPickerTitle">
+      <header class="slot-picker-header">
+        <p class="eyebrow">CELESTIAL MATCHMAKING</p>
+        <h1 id="slotPickerTitle">Choose your slot</h1>
+        <p id="joinCopy">Tap an available quadrant to join the game.</p>
+      </header>
+      <div id="slotGrid" class="slot-grid" aria-live="polite"></div>
+      <section id="savedPass" class="guest-character" hidden>
+        <span id="joinImage" class="guest-character-sprite" role="img" aria-label="Saved pixel character"></span>
+        <div><small>YOUR CHARACTER</small><strong id="joinName">Your character</strong></div>
+        <button id="clearPass" class="text-button" type="button">Use another</button>
+      </section>
+      <section id="noPass" class="empty-pass" hidden>
+        <p>No character pass is saved on this phone yet.</p>
+        <a class="primary-button" href="../booth/">Create a character <span>→</span></a>
+      </section>
+      <div class="slot-picker-actions">
+        <button id="readySlot" class="primary-button" type="button" hidden>I’m ready <span>✓</span></button>
+        <button id="changeSlot" class="secondary-button" type="button" hidden>↻ Change slot</button>
+      </div>
+      <p id="joinStatus" class="handoff-status" role="status"></p>
+    </section>
+  </main>
+  <script type="module" src="join.mjs?v=lobby-5"></script>
+</body>
+</html>

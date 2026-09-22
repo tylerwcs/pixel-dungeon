@@ -7,7 +7,7 @@ import {drawQR} from './qr.mjs';
 const $=id=>document.getElementById(id);
 const players=Array.from({length:4},(_,i)=>({control:i===0?'wasd':'ai',slotStatus:i===0?'joined':'open',ready:false,collector:null,pursuer:null,booth:null,remoteCharacterId:null}));
 let state=newRound(players),lobby=true,muted=false,audio=null,pausedPhase='playing',pauseReason='',lastPhase='',lastCount=-1;
-let pads=[],padSignature='',toastTimer,lobbyStartTimer,lobbySession=null,lobbyPollPending=false,lobbySignature='';
+let pads=[],padSignature='',toastTimer,lobbyStartTimer,lobbySession=null,lobbyInitPromise=null,lobbyRetryTimer,lobbyPollPending=false,lobbySignature='';
 const render=createRenderer($('game')),lobbyDialog=$('lobbyDialog');let storageWarning=false;
 
 async function savePreferences(){try{await writeSettings({version:2,muted,players:players.map(({booth,ready,slotStatus,remoteCharacterId,...p})=>({...p}))});}catch{if(!storageWarning){storageWarning=true;toast('Browser storage is unavailable. Changes will last for this visit only.');}}}
@@ -23,9 +23,20 @@ function playerAsset(index,role){return players[index].booth||players[index][rol
 function availableControls(index){const used=new Set(players.map((player,i)=>i===index||player.slotStatus!=='joined'?null:player.control).filter(Boolean));return ['wasd','arrows',...pads.map(gamepad=>`pad:${gamepad.index}`)].filter(control=>!used.has(control));}
 function assignControl(index){const player=players[index];if(player.control!=='ai'&&player.control!=='pending'&&!players.some((other,i)=>i!==index&&other.slotStatus==='joined'&&other.control===player.control))return;player.control=availableControls(index)[0]||'pending';}
 
-async function ensureLobby(){
-  try{const response=await fetch('/api/lobbies',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}),data=await response.json();if(!response.ok)throw new Error(data.error||'The lobby could not be created.');lobbySession={id:data.lobby.id,hostToken:data.hostToken,slots:data.slots};await applyLobby(data.lobby);}
-  catch(error){toast(error.message);$('lobbyStatusTitle').textContent='LOBBY OFFLINE';$('startNote').textContent='Refresh the page to try again.';}
+function ensureLobby(){
+  if(lobbySession)return Promise.resolve(true);
+  if(lobbyInitPromise)return lobbyInitPromise;
+  lobbyInitPromise=(async()=>{
+    try{
+      const response=await fetch('/api/lobbies',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}),data=await response.json();
+      if(!response.ok)throw new Error(data.error||'The lobby could not be created.');
+      lobbySession={id:data.lobby.id,hostToken:data.hostToken,joinUrl:data.joinUrl};clearTimeout(lobbyRetryTimer);await applyLobby(data.lobby);return true;
+    }catch(error){
+      toast(`${error.message} Reconnecting…`);$('lobbyStatusTitle').textContent='RECONNECTING';$('startNote').textContent='Reconnecting the shared lobby…';
+      clearTimeout(lobbyRetryTimer);lobbyRetryTimer=setTimeout(()=>ensureLobby(),2500);return false;
+    }finally{lobbyInitPromise=null;}
+  })();
+  return lobbyInitPromise;
 }
 async function applyLobby(serverLobby){
   const signature=JSON.stringify(serverLobby.slots);if(signature===lobbySignature)return;lobbySignature=signature;
@@ -40,9 +51,9 @@ async function applyLobby(serverLobby){
   if(lobby)state=newRound(players,state.collector,state.round);renderPlayers();
 }
 async function refreshLobby(){if(!lobby||!lobbySession||lobbyPollPending)return;lobbyPollPending=true;try{const response=await fetch(`/api/lobbies/${lobbySession.id}`,{cache:'no-store'}),data=await response.json();if(!response.ok)throw new Error(data.error);await applyLobby(data.lobby);}catch{}finally{lobbyPollPending=false;}}
-async function updateSlot(index,action,payload){if(!lobbySession)return;const invitation=lobbySession.slots[index],response=await fetch(`/api/lobbies/${lobbySession.id}/slots/${index+1}/${action}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload(invitation))}),data=await response.json();if(!response.ok)throw new Error(data.error||'The player slot could not be updated.');await applyLobby(data.lobby);}
+async function updateSlot(index,action,payload){if(!lobbySession&&!await ensureLobby())throw new Error('The lobby is reconnecting. Please try again in a moment.');const response=await fetch(`/api/lobbies/${lobbySession.id}/slots/${index+1}/${action}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload())}),data=await response.json();if(!response.ok)throw new Error(data.error||'The player slot could not be updated.');await applyLobby(data.lobby);}
 async function setAI(index,enabled){try{await updateSlot(index,'ai',()=>({hostToken:lobbySession.hostToken,ai:enabled}));}catch(error){toast(error.message);}}
-async function setReady(index,ready){try{await updateSlot(index,'ready',invitation=>({slotToken:invitation.joinToken,ready}));}catch(error){toast(error.message);}}
+async function setReady(index,ready){try{await updateSlot(index,'ready',()=>({hostToken:lobbySession.hostToken,ready}));}catch(error){toast(error.message);}}
 async function resetLobbyReadiness(){
  for(let index=0;index<players.length;index+=1){
   if(players[index].slotStatus==='joined')await setReady(index,false);
@@ -52,17 +63,18 @@ async function resetLobbyReadiness(){
 function renderPlayers(){
   const active=!lobby;document.querySelectorAll('#players > *').forEach(element=>element.remove());
   players.forEach((player,index)=>{
-    const ai=player.slotStatus==='ai',open=player.slotStatus==='open',role=index===state.collector?'✦ COIN COLLECTOR':ai?'AI PURSUER':open?'WAITING FOR PLAYER':'PURSUER',invitation=lobbySession?.slots[index];
+    const ai=player.slotStatus==='ai',open=player.slotStatus==='open',role=index===state.collector?'✦ COIN COLLECTOR':ai?'AI PURSUER':open?'WAITING FOR PLAYER':'PURSUER';
     const card=document.createElement('article');card.className=`player-card ${index===state.collector?'collector':''} ${ai?'ai':''} ${open?'open':''} ${player.ready?'ready':''}`;card.style.setProperty('--player',COLORS[index]);
-    const action=ai?`<div class="action-tile"><span class="action-icon">◆</span><strong>AI PLAYER</strong><small>Computer-controlled</small><button class="slot-link reopen-slot" type="button">Open for a player</button></div>`:`<button class="action-tile ai-action" type="button"><span class="action-icon add-player-icon" aria-hidden="true"></span><strong>ADD AI</strong><small>${open?'Fill this player slot':'Replace this player'}</small></button>`;
-    card.innerHTML=`<div class="player-card-head"><span class="player-badge">${index+1}</span><div class="player-info"><strong>PLAYER ${index+1}</strong><small>${role}</small></div></div><div class="player-card-body"><div class="character-tile"><canvas class="portrait" width="220" height="220" aria-label="Player ${index+1} character"></canvas><strong>${open?'OPEN SLOT':player.booth?.name||playerAsset(index,index===state.collector?'collector':'pursuer').name}</strong></div><a class="join-card" href="${invitation?.joinUrl||'#'}" target="_blank" aria-label="Open Player ${index+1} invitation"><canvas class="join-qr" width="220" height="220" aria-label="QR code for Player ${index+1}"></canvas><strong>SCAN TO JOIN</strong><small>Player ${index+1} invitation</small></a>${action}</div><button class="ready-button ${player.ready?'ready':''}" type="button">${open?'WAITING TO JOIN':ai?'◆ AI READY':player.ready?'✓ READY':'PRESS READY'}</button>`;
-    $('players').append(card);if(invitation?.joinUrl)drawQR(card.querySelector('.join-qr'),invitation.joinUrl,{dark:'#221c42',light:'#d9c8ff'});
+    const action=ai?`<button class="summary-action reopen-slot" type="button"><span>◆ AI PLAYER</span><small>OPEN THIS SLOT</small></button>`:`<button class="summary-action ai-action" type="button"><span>＋ ADD AI</span><small>${open?'FILL THIS SLOT':'REPLACE PLAYER'}</small></button>`;
+    card.innerHTML=`<div class="player-card-head"><span class="player-badge">${index+1}</span></div><div class="player-card-body"><div class="character-tile"><canvas class="portrait" width="220" height="220" aria-label="Player ${index+1} character"></canvas><strong>${open?'OPEN SLOT':player.booth?.name||playerAsset(index,index===state.collector?'collector':'pursuer').name}</strong></div><div class="player-summary"><div class="player-info"><strong>PLAYER ${index+1}</strong><small>${role}</small></div>${action}</div></div><button class="ready-button ${player.ready?'ready':''}" type="button">${open?'WAITING TO JOIN':ai?'◆ AI READY':player.ready?'✓ READY':'PRESS READY'}</button>`;
+    $('players').append(card);
     const select=card.querySelector('.control-select');if(select){const options=[['pending','Connect a controller'],['wasd','Keyboard · WASD'],['arrows','Keyboard · Arrow keys'],...pads.map(gamepad=>[`pad:${gamepad.index}`,`Gamepad ${gamepad.index+1}`])];if(player.control.startsWith('pad:')&&!options.some(([value])=>value===player.control))options.push([player.control,`${controlLabel(player.control)} · disconnected`]);options.forEach(([value,label])=>{const option=new Option(label,value);option.disabled=value!=='pending'&&players.some((other,i)=>i!==index&&other.slotStatus==='joined'&&other.control===value);select.add(option);});select.value=player.control;select.disabled=active;select.onchange=()=>{player.control=select.value;player.ready=false;state=newRound(players,state.collector,state.round);renderPlayers();savePreferences();};}
     card.querySelectorAll('.ai-action').forEach(button=>button.onclick=()=>setAI(index,true));const reopen=card.querySelector('.reopen-slot');if(reopen)reopen.onclick=()=>setAI(index,false);
     const readyButton=card.querySelector('.ready-button');readyButton.disabled=active||open||ai||player.control==='pending';readyButton.onclick=()=>setReady(index,!player.ready);
     const roleLabel=$(`hudRole${index}`),controlLabelNode=$(`hudControl${index}`);if(roleLabel)roleLabel.textContent=index===state.collector?'COLLECTOR':'PURSUER';if(controlLabelNode)controlLabelNode.textContent=controlLabel(player.control).replace('Keyboard · ','').replace('Computer-controlled','AI');
   });
-  const ready=everyoneReady();$('humanCount').textContent=`${humanCount()} / 4 HUMAN`;$('play').disabled=!lobby||!ready;$('boardPlay')&&($('boardPlay').disabled=!ready);$('play').innerHTML=ready?'Starting the chase <span>→</span>':'Waiting for ready players <span>◇</span>';$('lobbyStatusTitle').textContent=ready?'ALL PLAYERS READY':'WAITING FOR PLAYERS';$('startNote').textContent=!lobbySession?'Preparing player invitations…':players.some(player=>player.slotStatus==='open')?'Scan a slot or add an AI player.':!controlsValid()?'Connect controls for every human player.':ready?'Five-second countdown starting…':'Ready every human player';clearTimeout(lobbyStartTimer);if(lobby&&ready)lobbyStartTimer=setTimeout(()=>{if(lobby&&everyoneReady())start();},700);
+  const joinLink=$('lobbyJoin'),joinQr=$('lobbyQr');if(joinLink)joinLink.href=lobbySession?.joinUrl||'#';if(joinQr&&lobbySession?.joinUrl)drawQR(joinQr,lobbySession.joinUrl,{dark:'#221c42',light:'#f0e5ff'});
+  const ready=everyoneReady();$('humanCount').textContent=`${humanCount()} / 4 HUMAN`;$('play').disabled=!lobby||!ready;$('boardPlay')&&($('boardPlay').disabled=!ready);$('play').innerHTML='START CHASE <span>▶</span>';$('lobbyStatusTitle').textContent=ready?'ALL PLAYERS READY':'WAITING FOR PLAYERS';$('startNote').textContent=!lobbySession?'Preparing the shared lobby code…':players.some(player=>player.slotStatus==='open')?'Scan the lobby code or add an AI player.':!controlsValid()?'Connect controls for every human player.':ready?'All players are ready.':'Ready every human player';clearTimeout(lobbyStartTimer);
 }
 
 function openLobby(){if(!lobbyDialog.open)lobbyDialog.showModal();}

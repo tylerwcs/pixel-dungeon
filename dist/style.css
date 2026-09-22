@@ -160,3 +160,7 @@ body,.game-stage:fullscreen{background-color:#030719;background-image:linear-gra
  .lobby-dialog .party-panel{grid-template-rows:82px minmax(0,1fr) 112px;padding-bottom:14px}
  .lobby-grid{height:min(680px,calc(100dvh - 224px));gap:18px 26px}
 }
+
+@media(min-width:1500px){
+ .lobby-grid,.lobby-footer{width:min(1184px,80%)}
+}

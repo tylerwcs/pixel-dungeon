@@ -157,10 +157,14 @@ body,.game-stage:fullscreen{background-color:#030719;background-image:linear-gra
 }
 
 @media(min-width:1500px) and (min-height:850px){
- .lobby-dialog .party-panel{grid-template-rows:82px minmax(0,1fr) 112px;padding-bottom:14px}
- .lobby-grid{height:min(680px,calc(100dvh - 224px));gap:18px 26px}
+ .lobby-dialog .party-panel{grid-template-rows:82px minmax(0,1fr) 184px;padding-bottom:14px}
+ .lobby-grid{height:min(620px,calc(100dvh - 278px));gap:18px 26px}
+ .lobby-footer{min-height:184px}
+ .lobby-join{min-width:430px;padding:10px 22px 10px 12px;gap:18px}
+ .lobby-join canvas{width:156px;height:156px;padding:0;background:#fff}
 }
 
 @media(min-width:1500px){
  .lobby-grid,.lobby-footer{width:min(1184px,80%)}
+ .lobby-grid{gap:40px 44px}
 }

@@ -73,7 +73,7 @@ function renderPlayers(){
     const readyButton=card.querySelector('.ready-button');readyButton.disabled=active||open||ai||player.control==='pending';readyButton.onclick=()=>setReady(index,!player.ready);
     const roleLabel=$(`hudRole${index}`),controlLabelNode=$(`hudControl${index}`);if(roleLabel)roleLabel.textContent=index===state.collector?'COLLECTOR':'PURSUER';if(controlLabelNode)controlLabelNode.textContent=controlLabel(player.control).replace('Keyboard · ','').replace('Computer-controlled','AI');
   });
-  const joinLink=$('lobbyJoin'),joinQr=$('lobbyQr');if(joinLink)joinLink.href=lobbySession?.joinUrl||'#';if(joinQr&&lobbySession?.joinUrl)drawQR(joinQr,lobbySession.joinUrl,{dark:'#221c42',light:'#f0e5ff'});
+  const joinLink=$('lobbyJoin'),joinQr=$('lobbyQr');if(joinLink)joinLink.href=lobbySession?.joinUrl||'#';if(joinQr&&lobbySession?.joinUrl)drawQR(joinQr,lobbySession.joinUrl,{dark:'#070914',light:'#ffffff'});
   const ready=everyoneReady();$('humanCount').textContent=`${humanCount()} / 4 HUMAN`;$('play').disabled=!lobby||!ready;$('boardPlay')&&($('boardPlay').disabled=!ready);$('play').innerHTML='START CHASE <span>▶</span>';$('lobbyStatusTitle').textContent=ready?'ALL PLAYERS READY':'WAITING FOR PLAYERS';$('startNote').textContent=!lobbySession?'Preparing the shared lobby code…':players.some(player=>player.slotStatus==='open')?'Scan the lobby code or add an AI player.':!controlsValid()?'Connect controls for every human player.':ready?'All players are ready.':'Ready every human player';clearTimeout(lobbyStartTimer);
 }
 

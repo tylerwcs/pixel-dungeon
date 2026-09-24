@@ -15,6 +15,7 @@ function renderCharacter(){
   if(available){$('joinImage').style.setProperty('--sprite',`url('${character.imageUrl}')`);$('joinName').textContent=character.name;}
   const grid=$('characterGrid');grid.replaceChildren();
   for(const item of characters){const button=document.createElement('button'),own=item.id===pass?.id;button.type='button';button.className=`character-choice${item.id===character?.id?' selected':''}${own?' own':''}`;button.innerHTML=`${spriteMarkup(item,'character-choice-sprite')}<strong>${escapeHTML(item.name)}</strong>${own?'<small>YOUR DEFAULT</small>':''}`;button.setAttribute('aria-label',`${item.name}${own?', your default character':''}`);button.onclick=async()=>{character=item;renderCharacter();$('characterLibrary').close();if(selectedSlot)await claim(selectedSlot);else status(`${item.name} selected. Choose an open player slot.`);};grid.append(button);}
+  if(!characters.length){const empty=document.createElement('p');empty.className='character-library-empty';empty.textContent='No shared characters are available yet.';grid.append(empty);}
 }
 
 function renderSlots(){
@@ -28,7 +29,7 @@ function renderSlots(){
     button.innerHTML=`<span class="slot-badge">${slot.slot}</span>${image}<strong>${escapeHTML(slot.character?.name||`PLAYER ${slot.slot}`)}</strong><small>${label}</small>`;
     button.disabled=!character||state==='occupied'||state==='ai'||state==='yours';if(!button.disabled)button.onclick=()=>claim(slot.slot);grid.append(button);
   }
-  $('readySlot').hidden=!selectedSlot;$('changeSlot').hidden=!selectedSlot;$('readySlot').textContent=currentLobby.slots[selectedSlot-1]?.ready?'✓ READY':'I’M READY  ✓';$('readySlot').disabled=!!currentLobby.slots[selectedSlot-1]?.ready;
+  $('readySlot').hidden=!selectedSlot;$('readySlot').textContent=currentLobby.slots[selectedSlot-1]?.ready?'✓ READY':'I’M READY  ✓';$('readySlot').disabled=!!currentLobby.slots[selectedSlot-1]?.ready;
   $('joinCopy').textContent=selectedSlot?`You are Player ${selectedSlot}. Choose another open quadrant to switch.`:'Tap an available quadrant to join the game.';
 }
 
@@ -38,8 +39,9 @@ async function refreshLobby(showErrors=false){if(!validInvite()||pollPending)ret
 async function claim(slot){if(!character)return;try{status(`Moving ${character.name} to Player ${slot}…`);const response=await fetch(`/api/lobbies/${encodeURIComponent(lobby)}/slots/${slot}/claim`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({lobbyToken,characterId:character.id,guestToken:guestToken()})}),data=await response.json();if(!response.ok)throw new Error(data.error||'That slot could not be joined.');currentLobby=data.lobby;selectedSlot=slot;localStorage.setItem(slotKey,String(slot));renderSlots();status(`${character.name} is now Player ${slot}.`);}catch(error){status(error.message,true);await refreshLobby();}}
 
 $('readySlot').onclick=async()=>{if(!selectedSlot)return;try{$('readySlot').disabled=true;const response=await fetch(`/api/lobbies/${encodeURIComponent(lobby)}/slots/${selectedSlot}/ready`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({lobbyToken,guestToken:guestToken(),ready:true})}),data=await response.json();if(!response.ok)throw new Error(data.error||'Ready status could not be sent.');currentLobby=data.lobby;renderSlots();status('You’re ready. Look at the game screen for the countdown.');}catch(error){$('readySlot').disabled=false;status(error.message,true);}};
-$('changeSlot').onclick=()=>{document.querySelector('.slot-choice.open')?.focus();status('Choose any glowing available quadrant.');};
-$('chooseCharacter').onclick=()=>$('characterLibrary').showModal();
+async function openCharacterLibrary(){try{status('Refreshing the shared character lobby…');await loadCharacters();$('characterLibrary').showModal();status(characters.length?'Choose a shared character.':'The shared character lobby is empty right now.');}catch(error){status(error.message,true);}}
+$('chooseCharacter').onclick=openCharacterLibrary;
+$('browseCharacters').onclick=openCharacterLibrary;
 
 async function load(){
   if(!validInvite()){$('joinCopy').textContent='Scan the shared lobby QR from the matchmaking screen.';status('No active lobby invitation was found.',true);return;}

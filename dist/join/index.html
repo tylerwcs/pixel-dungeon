@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Choose Your Slot · Pixel Dungeon Chase</title>
   <link rel="stylesheet" href="../style.css?v=celestial-10">
-  <link rel="stylesheet" href="../handoff.css?v=gallery-1">
+  <link rel="stylesheet" href="../handoff.css?v=gallery-3">
 </head>
 <body class="join-page">
   <main class="slot-picker-shell">
@@ -22,12 +22,11 @@
         <button id="chooseCharacter" class="text-button" type="button">Change</button>
       </section>
       <section id="noCharacters" class="empty-pass" hidden>
-        <p>No characters are ready yet.</p>
-        <a class="primary-button" href="../booth/">Create a character <span>→</span></a>
+        <p>Choose a character from the shared event lobby.</p>
+        <button id="browseCharacters" class="primary-button" type="button">Open character lobby <span>→</span></button>
       </section>
       <div class="slot-picker-actions">
         <button id="readySlot" class="primary-button" type="button" hidden>I’m ready <span>✓</span></button>
-        <button id="changeSlot" class="secondary-button" type="button" hidden>↻ Change slot</button>
       </div>
       <p id="joinStatus" class="handoff-status" role="status"></p>
     </section>
@@ -39,6 +38,6 @@
     <h2 id="characterLibraryTitle">Choose your character</h2>
     <div id="characterGrid" class="character-grid"></div>
   </dialog>
-  <script type="module" src="join.mjs?v=gallery-1"></script>
+  <script type="module" src="join.mjs?v=gallery-3"></script>
 </body>
 </html>

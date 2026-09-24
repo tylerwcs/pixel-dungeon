@@ -46,7 +46,7 @@ async function applyLobby(serverLobby){
     if(slot.status==='open'){player.control='ai';player.booth=null;player.remoteCharacterId=null;}
     if(slot.status==='ai'){player.control='ai';player.booth=null;player.remoteCharacterId=null;player.ready=true;}
     if(slot.status==='joined'){
-      if(index>0&&(previousStatus!=='joined'||player.control==='ai'))assignControl(index);
+      if(slot.character&&(previousStatus!=='joined'||player.control==='ai'))assignControl(index);
       if(slot.character&&player.remoteCharacterId!==slot.character.id){const asset={src:slot.character.imageUrl,cols:slot.character.cols,rows:slot.character.rows,fps:slot.character.fps,layout:slot.character.layout,name:slot.character.name};try{await loadImage(asset.src);player.booth=asset;player.remoteCharacterId=slot.character.id;}catch{toast(`Player ${slot.slot}’s character could not be loaded.`);}}
     }
   }

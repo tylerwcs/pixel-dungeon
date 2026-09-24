@@ -1,7 +1,41 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Photo Booth · Pixel Dungeon Chase</title><meta name="description" content="Turn a photo into a playable pixel character for Pixel Dungeon Chase."><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23070c24' d='M0 0h32v32H0z'/%3E%3Cpath fill='%23e8bd69' d='M16 3l3 8 8 3-8 3-3 9-3-9-8-3 8-3z'/%3E%3C/svg%3E"><link rel="stylesheet" href="../style.css?v=celestial-5"><link rel="stylesheet" href="booth.css?v=celestial-5"></head>
-<body><div class="booth-shell"><header class="topbar"><a href="../" class="brand"><span class="brand-icon">✦</span><span>PIXEL DUNGEON <b>CHASE</b></span></a><span class="booth-badge"><i></i> CHARACTER PHOTO BOOTH</span></header>
-<main class="booth-main"><section class="booth-intro"><p class="eyebrow">A SEPARATE STATION</p><h1>Step in.<br><span>Come out pixelated.</span></h1><p>Make your character here while the next chase keeps moving. Finished characters appear automatically in the game lobby.</p><ol><li><b>01</b><span><strong>Take your photo</strong><small>Face the camera with one person in frame.</small></span></li><li><b>02</b><span><strong>Forge the sprite</strong><small>OpenAI turns it into a four-direction walk cycle.</small></span></li><li><b>03</b><span><strong>Join the party</strong><small>Choose your name from the lobby character list.</small></span></li></ol><a class="secondary-button game-link" href="../" target="_blank">Open the game lobby ↗</a></section>
-<section class="booth-card" id="forge"><div class="booth-card-heading"><div><p class="eyebrow">AI PHOTO FORGE</p><h2>Create your dungeon character</h2></div><span id="libraryCount" class="pill">Checking lobby…</span></div><label class="name-field">Character name<input id="characterName" maxlength="28" autocomplete="off" placeholder="e.g. Mina"></label><div class="booth-workspace"><div class="booth-stage"><img id="photoPreview" alt="Selected photo preview" hidden><video id="cameraPreview" playsinline muted hidden></video><span id="photoPlaceholder">Choose a clear photo with one person.</span></div><div class="booth-controls"><label class="upload-button">Choose or take photo<input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" capture="user"></label><button id="startCamera" class="secondary-button" type="button">Use live camera</button><button id="capturePhoto" class="secondary-button" type="button" hidden>Take snapshot</button><p>JPEG, PNG, or WebP · up to 8 MB</p></div></div><div class="privacy-note"><span>◈</span><p><strong>Before you generate</strong>Your photo is sent to OpenAI to create the sprite, then discarded by this game. The finished character is stored in the shared lobby library.</p></div><p class="error" id="boothError" role="alert"></p><button id="generateCharacter" class="primary-button wide" type="button" disabled>Create pixel character <span>✦</span></button></section>
-<section class="booth-card result-card" id="result" hidden aria-live="polite"><p class="eyebrow">READY FOR THE CHASE</p><div class="result-grid"><canvas id="resultPreview" width="256" height="256" aria-label="Generated pixel character preview"></canvas><div><h2 id="resultName">Your character</h2><p>Scan this private pass with your phone. It remembers your character, so joining a player slot later takes one tap.</p><div class="pass-transfer"><canvas id="passQR" width="220" height="220" aria-label="QR code for saving this character pass"></canvas><span><strong>SCAN TO SAVE</strong><small>Private character pass</small></span></div><div class="result-actions"><a id="savePass" class="primary-button" href="#" target="_blank">Save on this device <span>→</span></a><a id="downloadCharacter" class="secondary-button" href="#" download="pixel-dungeon-character.png">Save PNG backup</a><button id="makeAnother" class="secondary-button" type="button">Make another</button></div></div></div></section></main>
-<footer><span>PHOTOS ARE NOT STORED BY THE GAME.</span><span>Generated sprites are shared with this game lobby.</span></footer></div><script type="module" src="booth.mjs?v=sprite-anchor-1"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Photo Booth · Pixel Dungeon Chase</title>
+  <meta name="description" content="Turn a photo into a playable pixel character for Pixel Dungeon Chase.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23070c24' d='M0 0h32v32H0z'/%3E%3Cpath fill='%23e8bd69' d='M16 3l3 8 8 3-8 3-3 9-3-9-8-3 8-3z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../style.css?v=celestial-10">
+  <link rel="stylesheet" href="booth.css?v=portrait-1">
+</head>
+<body>
+  <main class="booth-shell">
+    <section class="booth-card" id="forge" aria-labelledby="forgeTitle">
+      <header class="booth-card-heading">
+        <div><p class="eyebrow">AI PHOTO FORGE</p><h1 id="forgeTitle">Create your dungeon character</h1></div>
+        <span id="libraryCount" class="pill">Checking lobby…</span>
+      </header>
+      <label class="name-field">Character name<input id="characterName" maxlength="28" autocomplete="off" placeholder="e.g. Mina"></label>
+      <div class="booth-stage"><img id="photoPreview" alt="Selected photo preview" hidden><video id="cameraPreview" playsinline muted hidden></video><span id="photoPlaceholder">YOUR PHOTO</span></div>
+      <div class="booth-controls">
+        <label class="upload-button">Choose or take photo<input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" capture="user"></label>
+        <button id="startCamera" class="secondary-button" type="button">Use live camera</button>
+        <button id="capturePhoto" class="secondary-button" type="button" hidden>Take snapshot</button>
+      </div>
+      <p class="error" id="boothError" role="alert"></p>
+      <button id="generateCharacter" class="primary-button wide" type="button" disabled>Create pixel character <span>✦</span></button>
+    </section>
+
+    <section class="booth-card result-card" id="result" hidden aria-live="polite">
+      <header class="booth-card-heading"><div><p class="eyebrow">READY FOR THE CHASE</p><h1 id="resultName">Your character</h1></div></header>
+      <div class="result-grid">
+        <canvas id="resultPreview" width="320" height="320" aria-label="Generated pixel character preview"></canvas>
+        <div class="pass-transfer"><canvas id="passQR" width="220" height="220" aria-label="QR code for saving this character pass"></canvas><strong>SCAN TO MAKE<br>THIS YOUR DEFAULT</strong></div>
+      </div>
+      <div class="result-actions"><a id="savePass" class="primary-button" href="#" target="_blank">Use on this device <span>→</span></a><a id="downloadCharacter" class="secondary-button" href="#" download="pixel-dungeon-character.png">Save PNG</a><button id="makeAnother" class="secondary-button" type="button">Make another</button></div>
+    </section>
+  </main>
+  <script type="module" src="booth.mjs?v=portrait-1"></script>
+</body>
+</html>

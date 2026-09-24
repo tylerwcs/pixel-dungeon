@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Choose Your Slot · Pixel Dungeon Chase</title>
-  <link rel="stylesheet" href="../style.css?v=celestial-5">
-  <link rel="stylesheet" href="../handoff.css?v=lobby-5">
+  <link rel="stylesheet" href="../style.css?v=celestial-10">
+  <link rel="stylesheet" href="../handoff.css?v=gallery-1">
 </head>
 <body class="join-page">
   <main class="slot-picker-shell">
@@ -16,13 +16,13 @@
         <p id="joinCopy">Tap an available quadrant to join the game.</p>
       </header>
       <div id="slotGrid" class="slot-grid" aria-live="polite"></div>
-      <section id="savedPass" class="guest-character" hidden>
-        <span id="joinImage" class="guest-character-sprite" role="img" aria-label="Saved pixel character"></span>
+      <section id="selectedCharacter" class="guest-character" hidden>
+        <span id="joinImage" class="guest-character-sprite" role="img" aria-label="Selected pixel character"></span>
         <div><small>YOUR CHARACTER</small><strong id="joinName">Your character</strong></div>
-        <button id="clearPass" class="text-button" type="button">Use another</button>
+        <button id="chooseCharacter" class="text-button" type="button">Change</button>
       </section>
-      <section id="noPass" class="empty-pass" hidden>
-        <p>No character pass is saved on this phone yet.</p>
+      <section id="noCharacters" class="empty-pass" hidden>
+        <p>No characters are ready yet.</p>
         <a class="primary-button" href="../booth/">Create a character <span>→</span></a>
       </section>
       <div class="slot-picker-actions">
@@ -32,6 +32,13 @@
       <p id="joinStatus" class="handoff-status" role="status"></p>
     </section>
   </main>
-  <script type="module" src="join.mjs?v=lobby-5"></script>
+
+  <dialog id="characterLibrary" class="character-library" aria-labelledby="characterLibraryTitle">
+    <form method="dialog"><button class="close-button" aria-label="Close character library">×</button></form>
+    <p class="eyebrow">SHARED CHARACTER LIBRARY</p>
+    <h2 id="characterLibraryTitle">Choose your character</h2>
+    <div id="characterGrid" class="character-grid"></div>
+  </dialog>
+  <script type="module" src="join.mjs?v=gallery-1"></script>
 </body>
 </html>

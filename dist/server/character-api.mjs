@@ -79,7 +79,7 @@ async function generateCharacter(request,env,options,storage){
 
 export async function handleCharacterApi(request,env={},options={}){
   const url=new URL(request.url),storage=createCharacterStorage(env,options);if(!storage)return json({error:'Shared character storage is not configured.'},503);
-  if(url.pathname==='/api/characters'&&request.method==='GET'){const characters=await storage.list();return json({count:Math.min(characters.length,60)});}
+  if(url.pathname==='/api/characters'&&request.method==='GET'){const characters=(await storage.list()).slice(0,60);return json({count:characters.length,characters});}
   if(url.pathname==='/api/characters/generate'&&request.method==='POST')return generateCharacter(request,env,options,storage);
   const pass=url.pathname.match(/^\/api\/characters\/([^/]+)\/pass$/);if(pass&&request.method==='POST'){
     if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);const id=pass[1];if(!validId(id))return json({error:'Character not found.'},404);let input;try{input=await request.json();}catch{return json({error:'The character pass could not be read.'},400);}const item=await storage.get(id);if(!item||!await tokenMatches(input.claimToken,item.claimHash))return json({error:'This character pass is invalid.'},403);return json({character:characterRecord(id,item.name||'Player character',item.createdAt||new Date().toISOString())});

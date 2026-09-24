@@ -6,7 +6,7 @@ const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const publicRoot=join(root,'dist'),outputRoot=join(publicRoot,'server');
 mkdirSync(join(publicRoot,'vendor'),{recursive:true});
 copyFileSync(join(root,'node_modules','qrcode-generator','dist','qrcode.mjs'),join(publicRoot,'vendor','qrcode.mjs'));
-const types={'.css':'text/css; charset=utf-8','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.png':'image/png'};
+const types={'.css':'text/css; charset=utf-8','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp'};
 const textTypes=new Set(['.css','.html','.mjs']);
 const files=[];
 function walk(directory){for(const entry of readdirSync(directory,{withFileTypes:true})){const path=join(directory,entry.name),name=relative(publicRoot,path).split(sep).join('/');if(name==='server'||name.startsWith('server/')||name==='.openai'||name.startsWith('.openai/'))continue;if(entry.isDirectory())walk(path);else files.push(path);}}

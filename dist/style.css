@@ -168,3 +168,51 @@ body,.game-stage:fullscreen{background-color:#030719;background-image:linear-gra
  .lobby-grid,.lobby-footer{width:min(1184px,80%)}
  .lobby-grid{gap:40px 44px}
 }
+.lobby-join>div{flex:1;align-self:stretch;display:grid;place-items:center;text-align:center}.lobby-join strong{font:400 clamp(12px,1.15vw,18px)/1.65 var(--font-pixel);letter-spacing:1px;color:#fff1c5}.lobby-join small{display:none}
+
+/* Official Ecopiana YEP artwork with the game's pixel-native interface. */
+body,.game-stage:fullscreen,.lobby-dialog{background-color:#030719;background-image:linear-gradient(180deg,#02061712,#0206174d),url('assets/yep-event-masthead.webp');background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed}
+.lobby-dialog::backdrop{background:#020617}.lobby-dialog:before,.lobby-dialog:after{display:none}
+.yep-event-logo{display:block;width:min(620px,52vw);height:auto;max-height:72px;object-fit:contain;filter:drop-shadow(0 8px 18px #020617aa)}
+.lobby-title-lockup{flex-direction:column;justify-content:center;gap:3px;min-width:0;text-align:center}.lobby-title-lockup .eyebrow{margin:0;color:#ffe7aa;font:400 8px/1.5 var(--font-pixel);letter-spacing:1px}.lobby-title-lockup .celestial-mark{display:none}
+.yep-game-logo{display:block;width:clamp(138px,15vw,220px);height:31px;object-fit:contain;object-position:left center;filter:drop-shadow(0 3px 8px #000a)}
+.arena-panel{border:2px solid #b8904e;border-radius:0;box-shadow:0 16px 52px #000a,inset 0 0 0 3px #27213f,0 0 28px #d4ab5a24}
+.arena-toolbar,.arena-footer{background:#090f2deb;border-color:#866e4f}.round-crown{border:2px solid #c19850;border-radius:0;background:#0a102e;box-shadow:inset 0 0 0 2px #2b2543,0 4px 0 #030719;padding:7px 24px}
+.small-button{border:2px solid #6f648b;border-radius:0;background:#0b102e;box-shadow:inset 0 0 0 2px #241f3c,0 3px 0 #030719;font-family:var(--font-pixel);font-size:10px}.small-button:hover{background:#211c3f}
+.hud-card{border:2px solid color-mix(in srgb,var(--player) 72%,#b8904e);border-radius:0;background:#080f2ded;box-shadow:inset 0 0 0 3px #24203b,0 5px 0 #030719}.hud-card small{border-width:2px;border-radius:0;background:#0a102e;box-shadow:inset 0 0 0 2px #24203c}
+.summary-action,.ready-button,.lobby-join,.lobby-party-count,.lobby-launch .lobby-start-button{border-radius:0;box-shadow:inset 0 0 0 2px #2a2444,0 4px 0 #030719}
+.summary-action{border-width:2px;background:linear-gradient(180deg,#2b244b,#171733)}
+.ready-button{border-width:2px}.lobby-join,.lobby-party-count{border-width:2px;background:#080f2dea}.lobby-launch .lobby-start-button:not(:disabled){border-color:#f7d98b;background:linear-gradient(180deg,#f5d57f 0 14%,#d9aa4e 14% 82%,#a16b2d 82%);color:#21162d;text-shadow:1px 1px 0 #fff1bd88;box-shadow:inset 0 0 0 2px #ffe4a777,0 5px 0 #7f5427,0 0 20px #e8bd6955}
+.player-badge{font-family:var(--font-pixel);font-weight:400}.character-tile .portrait,.game-portrait{image-rendering:pixelated}
+
+@media(min-width:841px){
+ .lobby-dialog .party-panel{grid-template-rows:96px minmax(0,1fr) 102px;padding-top:4px}
+ .lobby-header{position:relative;inset:auto;min-height:96px;justify-content:center;padding:0;pointer-events:none}
+ .lobby-title-lockup{width:100%;pointer-events:none}.lobby-header-actions{position:absolute;right:0;top:25px;pointer-events:auto}
+ .booth-link{border:2px solid #b8904e;border-radius:0;background:#090f2ee8;box-shadow:inset 0 0 0 2px #292341,0 4px 0 #030719;color:#ffe6a7}
+ .booth-link:hover{transform:none;background:#211c3f}
+ .player-card{background:linear-gradient(180deg,#080f2ee8,#050b24ee)}
+}
+@media(max-width:840px){
+ body,.game-stage:fullscreen,.lobby-dialog{background-attachment:scroll;background-position:center top}
+ .lobby-dialog .party-panel{padding-top:10px}.lobby-header{position:relative;inset:auto;min-height:102px;align-items:center;justify-content:center;padding:0 0 12px}
+ .lobby-title-lockup{width:100%;padding-right:94px}.yep-event-logo{width:min(100%,480px);max-height:68px}.lobby-header-actions{position:absolute;right:0;top:25px}
+ .booth-link{border:2px solid #b8904e;border-radius:0;background:#090f2ee8;box-shadow:inset 0 0 0 2px #292341,0 4px 0 #030719}
+ .arena-panel{min-height:calc(100dvh - 16px)}.yep-game-logo{width:clamp(110px,34vw,170px);height:28px}
+ .player-card{background:linear-gradient(180deg,#080f2eee,#050b24f5)}
+}
+@media(max-width:520px){
+ .lobby-header{min-height:88px}.lobby-title-lockup{width:calc(100% - 118px);margin-right:auto;align-items:flex-start;padding-right:0;text-align:left}.lobby-title-lockup .eyebrow{font-size:7px}.yep-event-logo{width:100%;max-height:58px}
+ .lobby-header-actions{top:21px}.booth-link{width:108px;justify-content:center;padding:7px 6px}.booth-link span{display:none}.booth-link b{font-size:7px;white-space:nowrap}.yep-game-logo{width:102px}.arena-toolbar{gap:6px}.small-button{min-width:29px;padding:4px 6px}
+}
+
+/* The legacy large-desktop footer used a 156px QR code and a 184px row.
+   Bound it to the takeover's footer track so 16:9 fullscreen stays in view. */
+@media(min-width:1500px) and (min-height:850px){
+ .lobby-dialog .party-panel{grid-template-rows:96px minmax(0,1fr) 132px;padding-top:4px;padding-bottom:10px}
+ .lobby-grid{height:min(620px,calc(100dvh - 244px));align-self:center}
+ .lobby-footer{min-height:132px;height:132px;align-self:end;padding-top:8px}
+ .lobby-join{min-width:380px;height:116px;padding:8px 18px 8px 10px;gap:14px}
+ .lobby-join canvas{width:96px;height:96px;padding:4px}
+ .lobby-party-count,.lobby-launch{height:auto}
+}

@@ -125,3 +125,15 @@ for (const viewport of [
     });
   });
 }
+
+test('podium confetti visibly falls when motion is enabled', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await showPodiumFixture(page, { width: 1280, height: 720 });
+
+  const pieces = page.locator('.podium-confetti i');
+  const before = await pieces.evaluateAll((items) => items.slice(0, 6).map((item) => item.getBoundingClientRect().top));
+  await page.waitForTimeout(300);
+  const after = await pieces.evaluateAll((items) => items.slice(0, 6).map((item) => item.getBoundingClientRect().top));
+
+  expect(after.some((top, index) => Math.abs(top - before[index]) > 2)).toBe(true);
+});

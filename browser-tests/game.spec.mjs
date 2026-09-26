@@ -126,7 +126,13 @@ test('the final podium is shown after four rounds played in full screen', async 
   for (let round = 1; round < 4; round++) {
     await page.locator('#continue').click({ timeout: 40_000 });
   }
-  await expect(page.locator('#podiumScreen')).toBeVisible({ timeout: 40_000 });
+  // Round 4 ends on its own result card; the podium waits for "See final results".
+  const finalResults = page.getByRole('button', { name: /see final results/i });
+  await expect(finalResults).toBeVisible({ timeout: 40_000 });
+  await expect(page.locator('.round-result .eyebrow')).toHaveText('FINAL ROUND');
+  await expect(page.locator('#podiumScreen')).toBeHidden();
+  await finalResults.click();
+  await expect(page.locator('#podiumScreen')).toBeVisible();
   const topmost = await page.evaluate(() => {
     const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
     return { insidePodium: !!hit?.closest('#podiumScreen'), fullscreen: document.fullscreenElement?.tagName ?? null };

@@ -5,7 +5,7 @@ import {readSettings,writeSettings} from './preferences.mjs';
 import {connectedPads,controlsAvailable,gamepadDirection} from './input.mjs';
 import {drawQR} from './qr.mjs';
 
-const $=id=>document.getElementById(id);
+const $=id=>document.getElementById(id),pad=value=>String(value).padStart(2,'0');
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const players=Array.from({length:4},(_,i)=>({control:i===0?'wasd':'ai',slotStatus:i===0?'joined':'open',ready:false,booth:null,remoteCharacterId:null}));
 let state=newRound(players),lobby=true,muted=false,audio=null,pausedPhase='playing',pauseReason='',lastPhase='',lastCount=-1;
@@ -103,13 +103,12 @@ function updateOverlay(){
   const phase=lobby?'lobby':state.phase,count=Math.ceil(state.countdown);if(phase===lastPhase&&(phase!=='countdown'||count===lastCount))return;lastPhase=phase;lastCount=count;
   const overlay=$('overlay');overlay.hidden=phase==='playing';$('pause').disabled=lobby||phase==='result';$('lobbyButton').disabled=lobby;$('pause').textContent=phase==='paused'?'▶ Resume':'Ⅱ Pause';
   if(phase==='lobby'){overlay.innerHTML='<div class="overlay-card"><span class="eyebrow">THE DUNGEON IS WAITING</span><h2>Ready to make<br>a run for it?</h2><p>Four rounds. Every player gets one turn collecting gold.</p><button id="boardPlay" class="primary-button">Open matchmaking lobby <span>→</span></button><span class="overlay-note">1–4 PLAYERS · ONE SCREEN</span></div>';$('boardPlay').onclick=openLobby;}
-  if(phase==='countdown')overlay.innerHTML=`<div class="overlay-card" aria-live="polite"><span class="eyebrow">${escapeHTML(playerNames(players)[state.collector].toUpperCase())} COLLECTS</span><div class="countdown-number">${count}</div><p>Get ready. The chase is on.</p></div>`;
+  if(phase==='countdown')overlay.innerHTML=`<div class="overlay-card countdown-card" aria-live="polite"><span class="eyebrow">ROUND ${pad(state.round)} OF ${pad(GAME_ROUNDS)}</span><h2 class="countdown-name">${escapeHTML(playerNames(players)[state.collector])}</h2><p class="countdown-role">is the collector</p><div class="countdown-number">${count}</div><p>Get ready. The chase is on.</p></div>`;
   if(phase==='paused'){overlay.innerHTML='<div class="overlay-card"><span class="eyebrow">A MOMENT OF PEACE</span><h2>Chase paused.</h2><p id="pauseReason"></p><button id="resume" class="primary-button">Back to the chase <span>→</span></button></div>';$('pauseReason').textContent=pauseReason;$('resume').onclick=resume;}
   if(phase==='result'){
     settleRound();
-    if(state.round>=GAME_ROUNDS){overlay.hidden=true;showPodium();return;}
-    const names=playerNames(players),rows=roundRows(state,names,scores),pad=value=>String(value).padStart(2,'0');
-    overlay.innerHTML=`<div class="overlay-card round-result" role="status"><span class="eyebrow">ROUND ${pad(state.round)} OF ${pad(GAME_ROUNDS)}</span><h2>${escapeHTML(roundHeadline(state,names))}</h2><table class="round-table"><thead><tr><th scope="col"><span class="sr-only">Player</span></th><th scope="col">This round</th><th scope="col">Total</th></tr></thead><tbody>${rows.map(row=>`<tr class="${row.collector?'is-collector':''}" style="--player:${COLORS[row.index]}"><th scope="row"><strong>${escapeHTML(row.name)}</strong><small>${escapeHTML(row.action)}</small></th><td>+${row.earned}</td><td>${row.total}</td></tr>`).join('')}</tbody></table><button id="continue" class="primary-button">Next round <span>→</span></button><span class="overlay-note">NEXT COLLECTOR: ${escapeHTML(names[nextCollector(players,state.collector)].toUpperCase())}</span></div>`;$('continue').onclick=nextRound;
+    const names=playerNames(players),rows=roundRows(state,names,scores),final=state.round>=GAME_ROUNDS;
+    overlay.innerHTML=`<div class="overlay-card round-result" role="status"><span class="eyebrow">${final?'FINAL ROUND':`ROUND ${pad(state.round)} OF ${pad(GAME_ROUNDS)}`}</span><h2>${escapeHTML(roundHeadline(state,names))}</h2><table class="round-table"><thead><tr><th scope="col"><span class="sr-only">Player</span></th><th scope="col">This round</th><th scope="col">Total</th></tr></thead><tbody>${rows.map(row=>`<tr class="${row.collector?'is-collector':''}" style="--player:${COLORS[row.index]}"><th scope="row"><strong>${escapeHTML(row.name)}</strong><small>${escapeHTML(row.action)}</small></th><td>+${row.earned}</td><td>${row.total}</td></tr>`).join('')}</tbody></table><button id="continue" class="primary-button">${final?'See final results':'Next round'} <span>→</span></button>${final?'':`<span class="overlay-note">NEXT COLLECTOR: ${escapeHTML(names[nextCollector(players,state.collector)].toUpperCase())}</span>`}</div>`;$('continue').onclick=nextRound;
   }
 }
 

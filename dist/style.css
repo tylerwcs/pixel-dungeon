@@ -292,3 +292,9 @@ body,.lobby-dialog{background-color:#030719;background-image:linear-gradient(180
 .round-table td:nth-of-type(1){color:#ffd46b}
 .round-table tr.is-collector{background:#e8bd6914}
 .round-table tr.is-collector small{color:#ffd46b}
+/* Countdown: the collector's name leads in collector gold; the number is a secondary timer badge. */
+.countdown-card{width:min(520px,92%);max-width:none}
+.countdown-card .countdown-name{margin:14px 0 6px;font-size:clamp(20px,2.4vw,32px);line-height:1.4;color:#ffd46b;text-shadow:3px 3px 0 #593b78,0 0 18px #e8bd6966;text-wrap:balance;overflow-wrap:anywhere}
+.countdown-card .countdown-role{margin:0 0 18px;font:400 9px/1.6 var(--font-pixel);letter-spacing:1px;color:#c9c3da;text-transform:uppercase}
+.countdown-card .countdown-number{display:grid;place-items:center;width:64px;height:64px;margin:0 auto;border:2px solid #ffd46b;background:#0a102e;box-shadow:inset 0 0 0 3px #3b2c12,0 4px 0 #030719,0 0 18px #e8bd6955;font-size:28px;line-height:1;text-shadow:0 0 12px #e8bd69}
+.countdown-card p:last-child{margin:16px 0 0}

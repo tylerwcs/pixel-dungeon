@@ -10,7 +10,8 @@ Browser (`dist/`, served as static files):
 
 - `index.html`, `app.mjs` — game screen: lobby polling, slot/ready state, control assignment, round flow, scoring, podium
 - `engine.mjs` — fixed-step simulation, maze, AI and collisions (pure; imported by the Node tests)
-- `render.mjs` — Canvas 2D drawing; detects sprite frames from alpha so imperfect generated sheets stay anchored
+- `render.mjs` — Canvas 2D drawing; detects sprite frames from alpha so imperfect generated sheets stay anchored; `playerNames` gives in-game character names
+- `labels.mjs` — round-result wording (who caught whom, per-player gold); pure, unit-tested
 - `input.mjs` — keyboard and gamepad normalization
 - `preferences.mjs` — IndexedDB mute preference
 - `booth/` — photo booth that generates a character and shows its pass QR

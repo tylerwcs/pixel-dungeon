@@ -267,3 +267,28 @@ body,.lobby-dialog{background-color:#030719;background-image:linear-gradient(180
 /* Short desktop screens: shorter podium steps and a height-aware title keep the logo and frame inset on screen. */
 @media(max-height:760px) and (min-width:841px){.podium-heading h2{font-size:clamp(25px,4.8vh,46px)}.podium-entry.rank-1 .podium-step{height:48px}.podium-entry.rank-2 .podium-step{height:40px}.podium-entry.rank-3 .podium-step{height:32px}}
 @media(max-height:900px) and (min-width:841px){.podium-panel{--frame-clear:14px;gap:12px}.podium-stage{gap:12px}.podium-fourth .podium-portrait{width:36px}}
+/* In-game identity: gold marks the collector everywhere; pursuers keep their player colour with a red role label. */
+.icon-button{display:inline-grid;place-items:center;padding:0}
+.icon-button svg{display:block;width:14px;height:14px}
+.icon-button:disabled{opacity:.4;cursor:default}
+.hud-card p{min-width:0;padding-right:16px}
+.hud-card strong{overflow-wrap:anywhere;text-wrap:balance}
+.hud-card p span{color:#ff9d8f}
+.hud-card:not(.is-collector) .game-portrait{filter:saturate(.8) brightness(.85)}
+.hud-card.is-collector{border-color:#ffd46b;box-shadow:inset 0 0 0 3px #3b2c12,0 5px 0 #030719,0 0 26px #e8bd6999}
+.hud-card.is-collector p span{color:#ffd46b}
+.hud-card.is-collector small{border-color:#ffd46b}
+/* Round result: headline says who caught whom; the table shows every player's round and running gold. */
+.round-result{width:min(560px,92%);max-width:none}
+.round-result h2{margin:12px 0 18px;font-size:clamp(15px,1.8vw,22px);line-height:1.5;text-wrap:balance}
+.round-table{width:100%;margin:0 0 20px;border-collapse:collapse;text-align:left}
+.round-table thead th{padding:0 10px 8px;font:400 7px/1.5 var(--font-pixel);letter-spacing:1px;color:#928aa8;text-align:right;text-transform:uppercase}
+.round-table tbody th,.round-table td{padding:9px 10px;border-top:1px solid #2c2a4d;vertical-align:middle}
+.round-table tbody th{font-weight:400}
+.round-table tbody th strong{display:flex;align-items:center;gap:8px;font:400 10px/1.5 var(--font-pixel);color:var(--player);overflow-wrap:anywhere}
+.round-table tbody th strong:before{content:'';flex:none;width:8px;height:8px;background:var(--player)}
+.round-table small{display:block;margin:3px 0 0 16px;font-size:12px;line-height:1.4;color:#aaa3bc}
+.round-table td{font:400 11px/1.5 var(--font-pixel);color:#fff1b8;text-align:right;white-space:nowrap}
+.round-table td:nth-of-type(1){color:#ffd46b}
+.round-table tr.is-collector{background:#e8bd6914}
+.round-table tr.is-collector small{color:#ffd46b}

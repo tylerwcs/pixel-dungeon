@@ -1,5 +1,5 @@
 import {drawQR} from '../qr.mjs';
-import {cache,drawSprite} from '../render.mjs?v=booth-identity-1';
+import {cache,drawSprite} from '../render.mjs?v=names-1';
 
 const $=id=>document.getElementById(id);
 let photoFile=null,cameraStream=null,generatedImage=null,generatedAsset=null,animationFrame=0;

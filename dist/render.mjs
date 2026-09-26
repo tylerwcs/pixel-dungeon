@@ -5,6 +5,11 @@ export function loadImage(src){if(cache.has(src))return Promise.resolve(cache.ge
 export const defaults={collector:{src:'assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon adventurer'},pursuer:{src:'assets/monster.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon monster'}};
 // Player 1 defaults to the adventurer and everyone else to the monster; a booth character replaces either.
 export function identityAsset(players,index){return players[index].booth||defaults[index===0?'collector':'pursuer'];}
+// In-game names: each character's name, numbered with the player slot only when another player shares it.
+export function playerNames(players){
+  const names=players.map((_,index)=>identityAsset(players,index).name?.trim()||`Player ${index+1}`),key=name=>name.toLowerCase();
+  return names.map((name,index)=>names.filter(other=>key(other)===key(name)).length>1?`${name} ${index+1}`:name);
+}
 
 export function detectSpriteFrames(alpha,width,height,cols=4,rows=4,threshold=24){
   if(!alpha||alpha.length!==width*height||cols<1||rows<1)return null;
@@ -52,7 +57,7 @@ export function createRenderer(canvas){
     ctx.imageSmoothingEnabled=false;ctx.drawImage(bg,0,0);
     for(const [x,y]of torches){const cx=x*32+16,cy=y*32+16;const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,65);glow.addColorStop(0,'#eea75424');glow.addColorStop(1,'#eea75400');ctx.fillStyle=glow;ctx.fillRect(cx-65,cy-65,130,130);ctx.fillStyle='#9c663e';ctx.fillRect(cx-3,cy+2,6,10);ctx.fillStyle='#edac59';ctx.fillRect(cx-4,cy-6,8,10);ctx.fillStyle='#ffe6a2';ctx.fillRect(cx-2,cy-8+(Math.floor(time*4)%2)*2,4,9);}
     for(const k of state.coins){const [x,y]=k.split(',').map(Number),cx=x*32+16,cy=y*32+16;ctx.fillStyle='#8e642e';ctx.fillRect(cx-3,cy-4,7,9);ctx.fillStyle='#edbc68';ctx.fillRect(cx-3,cy-4,5,7);ctx.fillStyle='#ffe5a4';ctx.fillRect(cx-2,cy-3,2,3);}
-    for(const a of state.actors){const p=position(a),x=p.x*32+16,y=p.y*32+16,color=COLORS[a.id];ctx.fillStyle='#0007';ctx.beginPath();ctx.ellipse(x,y+11,12,5,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.strokeRect(Math.round(x-12),Math.round(y-12),24,25);drawSprite(ctx,identityAsset(players,a.id),x,y-3,39,time,a.facing,!!a.target);ctx.fillStyle=color;ctx.fillRect(Math.round(x+7),Math.round(y-17),12,12);ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillStyle='#191620';ctx.fillText(String(a.id+1),Math.round(x+13),Math.round(y-8));}
+    for(const a of state.actors){const p=position(a),x=p.x*32+16,y=p.y*32+16,color=COLORS[a.id];ctx.fillStyle='#0007';ctx.beginPath();ctx.ellipse(x,y+11,12,5,0,0,Math.PI*2);ctx.fill();if(a.collector){const pulse=.5+.5*Math.sin(time*5);ctx.fillStyle=`rgba(255,212,107,${.12+.14*pulse})`;ctx.beginPath();ctx.arc(x,y,19+pulse*2,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffd46b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,16,0,Math.PI*2);ctx.stroke();}else{ctx.strokeStyle=color;ctx.lineWidth=2;ctx.strokeRect(Math.round(x-12),Math.round(y-12),24,25);}drawSprite(ctx,identityAsset(players,a.id),x,y-3,39,time,a.facing,!!a.target);ctx.fillStyle=color;ctx.fillRect(Math.round(x+7),Math.round(y-17),12,12);ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillStyle='#191620';ctx.fillText(String(a.id+1),Math.round(x+13),Math.round(y-8));}
   }
   return render;
 }

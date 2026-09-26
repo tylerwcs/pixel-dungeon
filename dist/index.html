@@ -6,24 +6,24 @@
   <title>Pixel Dungeon Chase</title>
   <meta name="description" content="One adventurer. Three pursuers. A dungeon full of gold. A local multiplayer pixel game for 1–4 players.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23070c24' d='M0 0h32v32H0z'/%3E%3Cpath fill='%23e8bd69' d='M16 3l3 8 8 3-8 3-3 9-3-9-8-3 8-3z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=frame-1">
+  <link rel="stylesheet" href="style.css?v=names-1">
 </head>
 <body>
   <div class="shell">
     <main class="game-main">
       <div class="game-stage">
         <aside class="player-rail player-rail-left" aria-label="Players 1 and 3">
-          <article class="hud-card" style="--player:#bade80"><span class="hud-number">1</span><p><strong>PLAYER 1</strong><span id="hudRole0">COLLECTOR</span></p><canvas class="game-portrait" data-player="0" width="176" height="176" aria-label="Player 1 character"></canvas><small id="hudControl0" class="hud-score">◆ 0 GOLD</small></article>
-          <article class="hud-card" style="--player:#ff9f82"><span class="hud-number">3</span><p><strong>PLAYER 3</strong><span id="hudRole2">PURSUER</span></p><canvas class="game-portrait" data-player="2" width="176" height="176" aria-label="Player 3 character"></canvas><small id="hudControl2" class="hud-score">◆ 0 GOLD</small></article>
+          <article class="hud-card" id="hud0" style="--player:#bade80"><span class="hud-number">1</span><p><strong id="hudName0">PLAYER 1</strong><span id="hudRole0">COLLECTOR</span></p><canvas class="game-portrait" data-player="0" width="176" height="176" aria-label="Player 1 character"></canvas><small id="hudControl0" class="hud-score">◆ 0 GOLD</small></article>
+          <article class="hud-card" id="hud2" style="--player:#ff9f82"><span class="hud-number">3</span><p><strong id="hudName2">PLAYER 3</strong><span id="hudRole2">PURSUER</span></p><canvas class="game-portrait" data-player="2" width="176" height="176" aria-label="Player 3 character"></canvas><small id="hudControl2" class="hud-score">◆ 0 GOLD</small></article>
         </aside>
         <section class="arena-panel" aria-label="Dungeon game">
-          <div class="arena-toolbar"><div class="dungeon-label"><img class="yep-game-logo" src="assets/yep-event-logo.webp" alt=""><span class="sr-only">Ecopiana Year End Party 2026</span></div><span class="round-crown" id="roundCrown">ROUND 01</span><div class="arena-buttons"><button id="sound" class="small-button" aria-label="Mute sound" title="Sound">♫</button><button id="help" class="small-button" aria-label="How to play" title="How to play">?</button><button id="pause" class="small-button" disabled>Ⅱ</button><button id="fullscreen" class="small-button" aria-label="Toggle full screen">⛶</button></div></div>
+          <div class="arena-toolbar"><div class="dungeon-label"><img class="yep-game-logo" src="assets/yep-event-logo.webp" alt=""><span class="sr-only">Ecopiana Year End Party 2026</span></div><span class="round-crown" id="roundCrown">ROUND 01</span><div class="arena-buttons"><button id="lobbyButton" class="small-button icon-button" aria-label="Return to lobby" title="Return to lobby" disabled><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" shape-rendering="crispEdges" fill="currentColor"><path d="M2 1h8v2H4v10h6v2H2z"/><path d="M6 7h5v2H6z"/><path d="M10 4h1v1h1v1h1v1h1v2h-1v1h-1v1h-1v1h-1z"/></svg></button><button id="sound" class="small-button" aria-label="Mute sound" title="Sound">♫</button><button id="help" class="small-button" aria-label="How to play" title="How to play">?</button><button id="pause" class="small-button" disabled>Ⅱ</button><button id="fullscreen" class="small-button" aria-label="Toggle full screen">⛶</button></div></div>
           <div class="board-wrap" id="boardWrap"><canvas id="game" width="800" height="672" aria-label="Dungeon maze. Use your assigned keyboard or gamepad to move."></canvas><div id="overlay" class="board-overlay"><div class="overlay-card"><span class="eyebrow">THE DUNGEON IS WAITING</span><h2>Ready to make<br>a run for it?</h2><p>Gather the gold. Dodge the monsters.<br>Don’t get caught.</p><button id="boardPlay" class="primary-button">Open matchmaking lobby <span>→</span></button><span class="overlay-note">1–4 PLAYERS · ONE SCREEN</span></div></div></div>
           <div class="arena-footer"><span><i class="coin-icon"></i> <b id="coins">—</b> <span id="coinLabel">coins to collect</span></span><span id="roundLabel">ROUND 01</span><span class="live-indicator" id="statusLabel">WAITING FOR PARTY</span></div>
         </section>
         <aside class="player-rail player-rail-right" aria-label="Players 2 and 4">
-          <article class="hud-card" style="--player:#c7a7ff"><span class="hud-number">2</span><p><strong>PLAYER 2</strong><span id="hudRole1">PURSUER</span></p><canvas class="game-portrait" data-player="1" width="176" height="176" aria-label="Player 2 character"></canvas><small id="hudControl1" class="hud-score">◆ 0 GOLD</small></article>
-          <article class="hud-card" style="--player:#84e8ff"><span class="hud-number">4</span><p><strong>PLAYER 4</strong><span id="hudRole3">PURSUER</span></p><canvas class="game-portrait" data-player="3" width="176" height="176" aria-label="Player 4 character"></canvas><small id="hudControl3" class="hud-score">◆ 0 GOLD</small></article>
+          <article class="hud-card" id="hud1" style="--player:#c7a7ff"><span class="hud-number">2</span><p><strong id="hudName1">PLAYER 2</strong><span id="hudRole1">PURSUER</span></p><canvas class="game-portrait" data-player="1" width="176" height="176" aria-label="Player 2 character"></canvas><small id="hudControl1" class="hud-score">◆ 0 GOLD</small></article>
+          <article class="hud-card" id="hud3" style="--player:#84e8ff"><span class="hud-number">4</span><p><strong id="hudName3">PLAYER 4</strong><span id="hudRole3">PURSUER</span></p><canvas class="game-portrait" data-player="3" width="176" height="176" aria-label="Player 4 character"></canvas><small id="hudControl3" class="hud-score">◆ 0 GOLD</small></article>
         </aside>
       </div>
     </main>
@@ -38,6 +38,6 @@
   </dialog>
   <dialog id="helpDialog"><form method="dialog"><button class="close-button" aria-label="Close instructions">×</button></form><p class="eyebrow">DUNGEON FIELD GUIDE</p><h2>Gold or glory?</h2><p>A game has four rounds, and every player becomes the collector once. Collectors keep every gold piece they gather. Each pursuer who catches the collector earns 15 gold.</p><div class="help-controls"><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Keyboard 1</p><p><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> Keyboard 2</p><p>D-pad or left stick · Gamepad movement</p><p><kbd>Esc</kbd> Pause / resume · <kbd>M</kbd> Sound</p></div><p>Controls are assigned as players join: WASD first, then the arrow keys, then connected gamepads. Three or four people need gamepads. Unclaimed slots can be computer-controlled. AI players take their own collector turn too.</p></dialog>
   <div id="toast" role="status" class="toast" hidden></div>
-  <script type="module" src="app.mjs?v=fullscreen-1"></script>
+  <script type="module" src="app.mjs?v=names-1"></script>
 </body>
 </html>

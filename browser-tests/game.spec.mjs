@@ -89,6 +89,25 @@ test('a host can fill empty slots with AI and start a real game', async ({ page 
   await expect(page.locator('.hud-score').first()).toContainText('0 GOLD');
 });
 
+test('the top-bar lobby icon leaves a running game in one click', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openLobby(page);
+  await expect(page.locator('#lobbyButton')).toBeDisabled();
+  for (const slot of [2, 3, 4]) {
+    const card = page.locator('.player-card').nth(slot - 1);
+    await card.getByRole('button', { name: /add ai/i }).click();
+    await expect(card.getByRole('button', { name: /ai player/i })).toBeVisible();
+  }
+  await page.locator('.player-card').first().getByRole('button', { name: /press ready/i }).click();
+  await page.getByRole('button', { name: /start chase/i }).click();
+  await expect(page.locator('#hud0')).toHaveClass(/is-collector/);
+  await expect(page.locator('#hudName0')).toHaveText('Dungeon adventurer');
+
+  await page.getByRole('button', { name: 'Return to lobby' }).click();
+  await expect(page.locator('#lobbyDialog')).toBeVisible();
+  await expect(page.locator('#lobbyButton')).toBeDisabled();
+});
+
 test('the final podium is shown after four rounds played in full screen', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1280, height: 720 });

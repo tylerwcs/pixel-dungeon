@@ -1,0 +1,5 @@
+// Per-browser game preferences (currently the mute setting), kept in IndexedDB.
+let dbPromise;
+function db(){return dbPromise??=new Promise((resolve,reject)=>{if(!globalThis.indexedDB){reject(new Error('Storage unavailable'));return;}const r=indexedDB.open('pixel-dungeon-chase',1);r.onupgradeneeded=()=>r.result.createObjectStore('settings');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.onblocked=()=>reject(new Error('Storage blocked'));});}
+export async function readSettings(){const database=await db();return new Promise((resolve,reject)=>{const r=database.transaction('settings').objectStore('settings').get('party');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+export async function writeSettings(settings){const database=await db();return new Promise((resolve,reject)=>{const tx=database.transaction('settings','readwrite');tx.objectStore('settings').put(settings,'party');tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}

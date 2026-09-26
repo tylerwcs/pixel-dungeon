@@ -1,23 +1,21 @@
 import {newRound,nextCollector,step,roundScores,rankScores,COLORS,GAME_ROUNDS,CATCH_BONUS} from './engine.mjs';
-import {loadImage,drawSprite,defaults,identityAsset,createRenderer} from './render.mjs?v=fixed-identity-1';
-import {createCharacterEditor,readSettings,writeSettings,validateSettings} from './characters.mjs';
+import {loadImage,drawSprite,defaults,identityAsset,createRenderer} from './render.mjs?v=booth-identity-1';
+import {readSettings,writeSettings} from './preferences.mjs';
 import {connectedPads,controlsAvailable,gamepadDirection} from './input.mjs';
 import {drawQR} from './qr.mjs';
 
 const $=id=>document.getElementById(id);
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
-const players=Array.from({length:4},(_,i)=>({control:i===0?'wasd':'ai',slotStatus:i===0?'joined':'open',ready:false,collector:null,pursuer:null,booth:null,remoteCharacterId:null}));
+const players=Array.from({length:4},(_,i)=>({control:i===0?'wasd':'ai',slotStatus:i===0?'joined':'open',ready:false,booth:null,remoteCharacterId:null}));
 let state=newRound(players),lobby=true,muted=false,audio=null,pausedPhase='playing',pauseReason='',lastPhase='',lastCount=-1;
 let scores=Array(4).fill(0),scoreDetails=Array.from({length:4},()=>({collected:0,bonus:0})),roundSettled=false;
-let pads=[],padSignature='',toastTimer,lobbyStartTimer,lobbySession=null,lobbyInitPromise=null,lobbyRetryTimer,lobbyPollPending=false,lobbySignature='';
+let pads=[],padSignature='',toastTimer,lobbySession=null,lobbyInitPromise=null,lobbyRetryTimer,lobbyPollPending=false,lobbySignature='';
 const render=createRenderer($('game')),lobbyDialog=$('lobbyDialog');let storageWarning=false;
 
-async function savePreferences(){try{await writeSettings({version:2,muted,players:players.map(({booth,ready,slotStatus,remoteCharacterId,...p})=>({...p}))});}catch{if(!storageWarning){storageWarning=true;toast('Browser storage is unavailable. Changes will last for this visit only.');}}}
-const characterEditor=createCharacterEditor(players,{changed:async()=>{renderPlayers();await savePreferences();},notify:message=>toast(message)});
+async function savePreferences(){try{await writeSettings({version:3,muted});}catch{if(!storageWarning){storageWarning=true;toast('Browser storage is unavailable. Changes will last for this visit only.');}}}
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function beep(kind){if(muted||!audio)return;const now=audio.currentTime,notes=kind==='coin'?[720,960]:kind==='win'?[523,659,784,1047]:[250,180,110];notes.forEach((frequency,index)=>{const oscillator=audio.createOscillator(),gain=audio.createGain();oscillator.type='square';oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.025,now+index*.075);gain.gain.exponentialRampToValueAtTime(.001,now+index*.075+.095);oscillator.connect(gain);gain.connect(audio.destination);oscillator.start(now+index*.075);oscillator.stop(now+index*.075+.1);});}
 async function activateAudio(){try{audio??=new (window.AudioContext||window.webkitAudioContext)();await audio.resume();}catch{}}
-function controlLabel(control){if(control==='wasd')return 'Keyboard · WASD';if(control==='arrows')return 'Keyboard · Arrow keys';if(control==='ai')return 'Computer-controlled';if(control==='pending')return 'Connect a gamepad';return `Gamepad ${Number(control.split(':')[1])+1}`;}
 function humanCount(){return players.filter(player=>player.slotStatus==='joined'&&player.control!=='ai').length;}
 function controlsValid(){return players.every(player=>player.slotStatus!=='open'&&player.control!=='pending')&&controlsAvailable(players,pads);}
 function everyoneReady(){return controlsValid()&&players.every(player=>player.ready);}
@@ -26,7 +24,7 @@ function displayedScore(index){return scores[index]+(!roundSettled&&state.collec
 function updateScoreHud(){for(let index=0;index<players.length;index++){const node=$(`hudControl${index}`);if(node)node.textContent=`◆ ${displayedScore(index)} GOLD`;}}
 function resetScoring(){scores=Array(4).fill(0);scoreDetails=Array.from({length:4},()=>({collected:0,bonus:0}));roundSettled=false;}
 function settleRound(){if(roundSettled||state.phase!=='result')return;const earned=roundScores(state);scores=scores.map((score,index)=>score+earned[index]);scoreDetails[state.collector].collected+=state.collected;for(const id of state.catchers)scoreDetails[id].bonus+=CATCH_BONUS;roundSettled=true;updateScoreHud();}
-function characterLabel(asset){const name=asset?.name||'Dungeon character';if(!/\.png$/i.test(name))return name;const clean=name.replace(/\.png$/i,'').replace(/(?:[-_ ](?:walk|sprite|sheet|\d+x\d+|v\d+))+$/i,'').replace(/[-_]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase()).trim();return clean||'Custom character';}
+function characterLabel(asset){return asset?.name||'Dungeon character';}
 function availableControls(index){const used=new Set(players.map((player,i)=>i===index||player.slotStatus!=='joined'?null:player.control).filter(Boolean));return ['wasd','arrows',...pads.map(gamepad=>`pad:${gamepad.index}`)].filter(control=>!used.has(control));}
 function assignControl(index){const player=players[index];if(player.control!=='ai'&&player.control!=='pending'&&!players.some((other,i)=>i!==index&&other.slotStatus==='joined'&&other.control===player.control))return;player.control=availableControls(index)[0]||'pending';}
 
@@ -76,18 +74,17 @@ function renderPlayers(){
     const characterName=open?'OPEN SLOT':characterLabel(playerAsset(index));
     card.innerHTML=`<div class="player-card-head"><span class="player-badge">${index+1}</span></div><div class="player-card-body"><div class="character-tile"><canvas class="portrait" width="220" height="220" aria-label="Player ${index+1} character"></canvas><strong>PLAYER ${index+1}</strong></div><div class="player-summary"><div class="player-info"><strong>${escapeHTML(characterName)}</strong></div>${action}</div></div><button class="ready-button ${player.ready?'ready':''}" type="button">${open?'WAITING TO JOIN':ai?'◆ AI READY':player.ready?'✓ READY':'PRESS READY'}</button>`;
     $('players').append(card);
-    const select=card.querySelector('.control-select');if(select){const options=[['pending','Connect a controller'],['wasd','Keyboard · WASD'],['arrows','Keyboard · Arrow keys'],...pads.map(gamepad=>[`pad:${gamepad.index}`,`Gamepad ${gamepad.index+1}`])];if(player.control.startsWith('pad:')&&!options.some(([value])=>value===player.control))options.push([player.control,`${controlLabel(player.control)} · disconnected`]);options.forEach(([value,label])=>{const option=new Option(label,value);option.disabled=value!=='pending'&&players.some((other,i)=>i!==index&&other.slotStatus==='joined'&&other.control===value);select.add(option);});select.value=player.control;select.disabled=active;select.onchange=()=>{player.control=select.value;player.ready=false;state=newRound(players,state.collector,state.round);renderPlayers();savePreferences();};}
     card.querySelectorAll('.ai-action').forEach(button=>button.onclick=()=>setAI(index,true));const reopen=card.querySelector('.reopen-slot');if(reopen)reopen.onclick=()=>setAI(index,false);
     const readyButton=card.querySelector('.ready-button');readyButton.disabled=active||open||ai||player.control==='pending';readyButton.onclick=()=>setReady(index,!player.ready);
     const roleLabel=$(`hudRole${index}`);if(roleLabel)roleLabel.textContent=index===state.collector?'COLLECTOR':'PURSUER';
   });
   const joinLink=$('lobbyJoin'),joinQr=$('lobbyQr');if(joinLink)joinLink.href=lobbySession?.joinUrl||'#';if(joinQr&&lobbySession?.joinUrl)drawQR(joinQr,lobbySession.joinUrl,{dark:'#070914',light:'#ffffff'});
-  updateScoreHud();const ready=everyoneReady();$('humanCount').textContent=`${humanCount()} / 4 HUMAN`;$('play').disabled=!lobby||!ready;$('boardPlay')&&($('boardPlay').disabled=!ready);$('play').innerHTML='START CHASE <span>▶</span>';$('lobbyStatusTitle').textContent=ready?'ALL PLAYERS READY':'WAITING FOR PLAYERS';$('startNote').textContent=!lobbySession?'Preparing the shared lobby code…':players.some(player=>player.slotStatus==='open')?'Scan the lobby code or add an AI player.':!controlsValid()?'Connect controls for every human player.':ready?'All players are ready.':'Ready every human player';clearTimeout(lobbyStartTimer);
+  updateScoreHud();const ready=everyoneReady();$('humanCount').textContent=`${humanCount()} / 4 HUMAN`;$('play').disabled=!lobby||!ready;$('boardPlay')&&($('boardPlay').disabled=!ready);$('play').innerHTML='START CHASE <span>▶</span>';$('lobbyStatusTitle').textContent=ready?'ALL PLAYERS READY':'WAITING FOR PLAYERS';$('startNote').textContent=!lobbySession?'Preparing the shared lobby code…':players.some(player=>player.slotStatus==='open')?'Scan the lobby code or add an AI player.':!controlsValid()?'Connect controls for every human player.':ready?'All players are ready.':'Ready every human player';
 }
 
 function openLobby(){if(!lobbyDialog.open)lobbyDialog.showModal();}
 function hidePodium(){$('podiumScreen').hidden=true;$('podiumScreen').replaceChildren();}
-function start(){if(!lobby||!everyoneReady())return false;clearTimeout(lobbyStartTimer);activateAudio();resetScoring();state=newRound(players,0,1);lobby=false;hidePodium();if(lobbyDialog.open)lobbyDialog.close();lastPhase='';renderPlayers();updateOverlay();return true;}
+function start(){if(!lobby||!everyoneReady())return false;activateAudio();resetScoring();state=newRound(players,0,1);lobby=false;hidePodium();if(lobbyDialog.open)lobbyDialog.close();lastPhase='';renderPlayers();updateOverlay();return true;}
 async function returnLobby(){lobby=true;hidePodium();resetScoring();await resetLobbyReadiness();state=newRound(players,0,1);lastPhase='';renderPlayers();updateOverlay();openLobby();}
 function nextRound(){if(state.round>=GAME_ROUNDS){showPodium();return;}state=newRound(players,nextCollector(players,state.collector),state.round+1);roundSettled=false;lobby=false;lastPhase='';renderPlayers();updateOverlay();}
 function playAgain(){hidePodium();resetScoring();state=newRound(players,0,1);lobby=false;lastPhase='';renderPlayers();updateOverlay();}
@@ -119,10 +116,9 @@ const keys={KeyW:['wasd','up'],KeyA:['wasd','left'],KeyS:['wasd','down'],KeyD:['
 document.addEventListener('keydown',event=>{if(event.target.closest('input,select,textarea')||document.querySelector('dialog[open]'))return;if(keys[event.code]&&!lobby){event.preventDefault();const [control,direction]=keys[event.code],actor=state.actors.find(candidate=>candidate.control===control);if(actor&&['playing','countdown'].includes(state.phase))actor.queued=direction;}if(event.code==='Escape'&&!event.repeat){event.preventDefault();togglePause();}if(event.code==='KeyM'&&!event.repeat)toggleSound();});
 window.addEventListener('blur',()=>pause('The window lost focus. Resume when everyone is ready.'));document.addEventListener('visibilitychange',()=>{if(document.hidden)pause('The game was hidden. Resume when everyone is ready.');});
 function pollPads(){pads=connectedPads(navigator.getGamepads?.());const signature=pads.map(gamepad=>gamepad.index).join(',');if(signature!==padSignature){padSignature=signature;players.forEach((player,index)=>{if(player.slotStatus==='joined'&&player.control==='pending')assignControl(index);});if(!controlsValid())pause('A player’s gamepad disconnected. Reconnect it to resume.');renderPlayers();$('controllerNote').textContent=pads.length?`${pads.length} gamepad${pads.length===1?'':'s'} detected. Player controls are ready.`:'Connect gamepads for Players 3 and 4 before they join.';}if(!lobby&&['playing','countdown'].includes(state.phase))for(const actor of state.actors){if(!actor.control.startsWith('pad:'))continue;const gamepad=pads.find(candidate=>`pad:${candidate.index}`===actor.control);if(!gamepad)continue;const direction=gamepadDirection(gamepad);if(direction)actor.queued=direction;}}
-function updateSound(){$('sound').textContent=muted?'♪̸':'♫';$('sound').setAttribute('aria-label',muted?'Unmute sound':'Mute sound');$('sound').setAttribute('aria-pressed',String(muted));}
+function updateSound(){$('sound').textContent='♫';$('sound').classList.toggle('is-muted',muted);$('sound').setAttribute('aria-label',muted?'Unmute sound':'Mute sound');$('sound').setAttribute('aria-pressed',String(muted));}
 function toggleSound(){muted=!muted;updateSound();savePreferences();}
 $('sound').onclick=toggleSound;$('play').onclick=start;$('boardPlay').onclick=openLobby;$('pause').onclick=togglePause;$('lobbyDialog').addEventListener('cancel',event=>{if(lobby)event.preventDefault();});$('help').onclick=()=>{pause();$('helpDialog').showModal();};$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.querySelector('.game-stage').requestFullscreen();}catch{toast('Full screen is unavailable in this browser view.');}};
-function openEditor(index){characterEditor.open(index);}
 let accumulator=0,last=performance.now();
 function frame(now){
   const delta=Math.min((now-last)/1000,.1);last=now;pollPads();
@@ -131,11 +127,11 @@ function frame(now){
   document.querySelectorAll('.portrait').forEach((canvas,index)=>{const context=canvas.getContext('2d');context.clearRect(0,0,canvas.width,canvas.height);if(players[index].slotStatus==='open')return;drawSprite(context,playerAsset(index),110,104,190,now/1000);});
   document.querySelectorAll('.game-portrait').forEach(canvas=>{const index=Number(canvas.dataset.player),context=canvas.getContext('2d');context.clearRect(0,0,canvas.width,canvas.height);drawSprite(context,playerAsset(index),88,88,156,now/1000);});
   document.querySelectorAll('.podium-portrait').forEach(canvas=>{const context=canvas.getContext('2d'),index=Number(canvas.dataset.podiumPlayer);context.clearRect(0,0,canvas.width,canvas.height);drawSprite(context,playerAsset(index),110,108,190,now/1000);});
-  characterEditor.render(now/1000);requestAnimationFrame(frame);
+  requestAnimationFrame(frame);
 }
 
 await Promise.all(Object.values(defaults).map(asset=>loadImage(asset.src))).catch(()=>toast('Character artwork could not load. Please refresh.'));
-try{const saved=await readSettings();if(saved?.muted)muted=true;if(Array.isArray(saved?.players))for(let index=0;index<4;index++)for(const role of ['collector','pursuer'])if(saved.players[index]?.[role]){try{const asset=validateSettings(saved.players[index][role]);if(typeof asset.src!=='string'||(!asset.src.startsWith('data:image/png;base64,')&&!Object.values(defaults).some(defaultAsset=>defaultAsset.src===asset.src)))continue;await loadImage(asset.src);players[index][role]=asset;}catch{}}}catch{storageWarning=true;}
+try{const saved=await readSettings();if(saved?.muted)muted=true;}catch{storageWarning=true;}
 await ensureLobby();setInterval(refreshLobby,1000);updateSound();renderPlayers();updateOverlay();openLobby();requestAnimationFrame(frame);
 
 if(document.modelContext?.registerTool){const life=new AbortController();window.addEventListener('pagehide',()=>life.abort(),{once:true});const snapshot=()=>({phase:lobby?'lobby':state.phase,round:state.round,rounds:GAME_ROUNDS,collector:state.collector+1,coinsRemaining:state.coins.size,scores:[...scores],humanPlayers:humanCount()});for(const tool of [{name:'get_dungeon_game_state',description:'Read round status, collector, remaining coins and game scores.',annotations:{readOnlyHint:true},execute:()=>snapshot()},{name:'start_dungeon_round',description:'Start the game when every lobby slot is filled and ready.',execute:()=>{if(!start())throw new Error('Every player slot must be filled and ready.');return snapshot();}},{name:'pause_dungeon_round',description:'Pause an active dungeon chase.',execute:()=>{if(lobby||!['playing','countdown'].includes(state.phase))throw new Error('No active round to pause.');pause();return snapshot();}}]){try{Promise.resolve(document.modelContext.registerTool({...tool,inputSchema:{type:'object',properties:{},additionalProperties:false},execute:input=>{if(input===null||typeof input!=='object'||Object.keys(input).length)throw new Error('Expected an empty object.');return tool.execute();}},{signal:life.signal})).catch(()=>{});}catch{}}}

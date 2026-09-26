@@ -49,6 +49,7 @@ async function apiRequest(request, response) {
   const webResponse = await handleAppApi(webRequest, {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY || (mockFetch ? "local-mock" : ""),
     OPENAI_IMAGE_MODEL: process.env.OPENAI_IMAGE_MODEL,
+    CHARACTER_RATE_LIMIT: process.env.CHARACTER_RATE_LIMIT,
   }, { store: localCharacters, lobbyStore: localLobbies, ...(mockFetch ? { fetchImpl: mockFetch } : {}) });
   response.writeHead(webResponse.status, Object.fromEntries(webResponse.headers));
   response.end(Buffer.from(await webResponse.arrayBuffer()));

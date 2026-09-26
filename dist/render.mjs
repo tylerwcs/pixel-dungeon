@@ -3,7 +3,8 @@ export const cache=new Map();
 const frameCache=new Map();
 export function loadImage(src){if(cache.has(src))return Promise.resolve(cache.get(src));return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{cache.set(src,img);resolve(img);};img.onerror=()=>reject(new Error('This PNG could not be opened.'));img.src=src;});}
 export const defaults={collector:{src:'assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon adventurer'},pursuer:{src:'assets/monster.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon monster'}};
-export function identityAsset(players,index){const role=index===0?'collector':'pursuer',alternate=role==='collector'?'pursuer':'collector',player=players[index];return player.booth||player[role]||player[alternate]||defaults[role];}
+// Player 1 defaults to the adventurer and everyone else to the monster; a booth character replaces either.
+export function identityAsset(players,index){return players[index].booth||defaults[index===0?'collector':'pursuer'];}
 
 export function detectSpriteFrames(alpha,width,height,cols=4,rows=4,threshold=24){
   if(!alpha||alpha.length!==width*height||cols<1||rows<1)return null;

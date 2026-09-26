@@ -4,7 +4,8 @@ const MAX_PHOTO_BYTES=8*1024*1024;
 const MAX_CHARACTER_BYTES=6*1024*1024;
 const ALLOWED_PHOTO_TYPES=new Set(['image/jpeg','image/png','image/webp']);
 const RATE_WINDOW_MS=10*60*1000;
-const RATE_LIMIT=3;
+// A photo booth is one device behind one IP, so the per-IP default must cover a busy booth.
+const DEFAULT_RATE_LIMIT=20;
 const buckets=new Map();
 
 const json=(body,status=200,extra={})=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...extra}});
@@ -35,13 +36,15 @@ export function validatePhoto(photo){
 export function sanitizeCharacterName(value){const name=String(value||'').replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/g,' ').trim().slice(0,28);if(name.length<1)throw new Error('Enter a character name.');return name;}
 
 function clientKey(request){return request.headers.get('cf-connecting-ip')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'local';}
-function withinRateLimit(request,now){
-  const key=clientKey(request),recent=(buckets.get(key)||[]).filter(time=>now-time<RATE_WINDOW_MS);
-  if(recent.length>=RATE_LIMIT){buckets.set(key,recent);return false;}
+export function generationRateLimit(env={}){const limit=Number(env.CHARACTER_RATE_LIMIT);return Number.isInteger(limit)&&limit>0?limit:DEFAULT_RATE_LIMIT;}
+// In-process limiter for the local server and tests. Multi-instance hosts pass options.rateLimiter backed by shared storage.
+const memoryRateLimiter={async hit(key,now,limit,windowMs){
+  const recent=(buckets.get(key)||[]).filter(time=>now-time<windowMs);
+  if(recent.length>=limit){buckets.set(key,recent);return false;}
   recent.push(now);buckets.set(key,recent);
-  if(buckets.size>1000)for(const [candidate,times]of buckets)if(!times.some(time=>now-time<RATE_WINDOW_MS))buckets.delete(candidate);
+  if(buckets.size>1000)for(const [candidate,times]of buckets)if(!times.some(time=>now-time<windowMs))buckets.delete(candidate);
   return true;
-}
+}};
 export function resetGenerationRateLimits(){buckets.clear();}
 
 function sameOrigin(request){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return false;return request.headers.get('sec-fetch-site')!=='cross-site';}
@@ -63,7 +66,7 @@ async function generateCharacter(request,env,options,storage){
   if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);
   const contentLength=Number(request.headers.get('content-length')||0);if(contentLength>MAX_PHOTO_BYTES+1024*1024)return json({error:'This upload is too large.'},413);
   if(!env.OPENAI_API_KEY)return json({error:'The character forge is not configured yet.'},503);
-  if(!withinRateLimit(request,options.now?.()??Date.now()))return json({error:'This booth has made several characters recently. Try again in a few minutes.'},429);
+  if(!await (options.rateLimiter||memoryRateLimiter).hit(clientKey(request),options.now?.()??Date.now(),generationRateLimit(env),RATE_WINDOW_MS))return json({error:'This booth has made several characters recently. Try again in a few minutes.'},429);
   let input;try{input=await request.formData();}catch{return json({error:'The photo upload could not be read.'},400);}
   let name,photo;try{name=sanitizeCharacterName(input.get('name'));photo=validatePhoto(input.get('photo'));}catch(error){return json({error:error.message},400);}
 

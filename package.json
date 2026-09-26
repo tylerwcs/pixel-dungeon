@@ -8,11 +8,17 @@
     "build": "node scripts/build-site.mjs",
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
-    "test": "node --test tests.mjs"
+    "test": "node --test tests.mjs",
+    "test:browser": "playwright test",
+    "test:browser:report": "playwright show-report",
+    "test:all": "npm test && npm run test:browser"
   },
   "dependencies": {
     "@upstash/redis": "^1.38.4",
     "@vercel/blob": "^2.8.0",
     "qrcode-generator": "^2.0.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

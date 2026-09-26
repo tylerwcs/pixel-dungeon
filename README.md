@@ -24,7 +24,7 @@ Character-pass secrets are kept out of server metadata and are only placed in th
 
 This folder is a self-contained Codex-ready Git project. Open this directory as a local project in Codex so it can discover `AGENTS.md`, use the repository history, and run the documented commands.
 
-Install dependencies with `npm install`. Set `OPENAI_API_KEY` in the server environment to enable photo generation, start the local preview with `npm run dev`, then open `http://127.0.0.1:4173`. `OPENAI_IMAGE_MODEL` can override the default image-edit model. For UI work without making an API request, set `MOCK_CHARACTER_API=1`. Run automated verification with `npm test`.
+Install dependencies with `npm install`, then install the browser once with `npx playwright install chromium`. Set `OPENAI_API_KEY` in the server environment to enable photo generation, start the local preview with `npm run dev`, then open `http://127.0.0.1:4173`. `OPENAI_IMAGE_MODEL` can override the default image-edit model. For UI work without making an API request, set `MOCK_CHARACTER_API=1`. Run engine and behavior verification with `npm test`, real Chromium checks with `npm run test:browser`, or both with `npm run test:all`.
 
 The browser application remains in `dist/`. `npm run build` prepares the static bundle and its Worker files. The OpenAI API key is never exposed to the browser. JavaScript modules require HTTP rather than opening `index.html` directly from disk.
 
@@ -42,15 +42,15 @@ Vercel Blob stores sprite PNGs. Upstash Redis stores character metadata, the rec
 
 The simulation is in `dist/engine.mjs`, rendering in `dist/render.mjs`, control normalization in `dist/input.mjs`, and the PNG editor/storage in `dist/characters.mjs`. The page uses Canvas 2D and semantic HTML menus. No runtime framework, backend, API key, or account system is required for gameplay. Fonts use Google Fonts with local sans-serif fallbacks.
 
-The npm test command runs `node --test tests.mjs`.
+The `npm test` command runs `node --test tests.mjs`. `npm run test:browser` starts the local site automatically and runs the Playwright suite in Chromium. Open its screenshot report with `npm run test:browser:report`; failures also retain screenshots, video and traces under `test-results/`.
 
 Generated character PNGs are included under `dist/assets/`. Built-in imagegen created both sheets; the exact prompts are recorded in `ARTWORK.md`. The returned sheets are 1254 × 1254, so the renderer uses proportional frame boundaries rather than assuming integer 256-pixel cells.
 
 ## Verification
 
-23 automated checks cover connected maze/coins, 1–4-player setup, countdown, walls, buffered turns, deterministic movement, pause, crossing collisions, catch/coin precedence, both victory conditions, role rotation, AI navigation, PNG/settings validation, secure character-pass publishing, lobby claiming/readiness, quota errors, art-independent collision size, static routes, cache revalidation, and mixed keyboard/gamepad input/disconnection conditions.
+The Node suite covers connected maze/coins, 1–4-player setup, countdown, walls, buffered turns, deterministic movement, pause, crossing collisions, scoring, role rotation, fixed player identities, AI navigation, PNG/settings validation, secure character-pass publishing, lobby claiming/readiness, quota errors, art-independent collision size, static routes, cache revalidation, and mixed keyboard/gamepad input/disconnection conditions.
 
-Browser QA covers lobby assignment and duplicate-control prevention, directional-sheet import, invalid-file errors, animation preview, save/reload persistence, reset, start/pause, and narrow desktop layout. Structured game-state/start/pause tools were exercised through WebMCP, including invalid inputs and invalid-state errors.
+Playwright browser QA covers the fullscreen lobby, the effective 150%-zoom desktop size, adding AI players, starting a game, and the final podium at fullscreen and compact desktop sizes. Podium screenshots are attached to the test output for every run. Structured game-state/start/pause tools were exercised through WebMCP, including invalid inputs and invalid-state errors.
 
 Hardware limitation: physical gamepads and separate Chrome/Edge installations were not available to the browser tools. Gamepad inputs were tested with synthetic unit-test fixtures; UI verification used the Codex in-app browser. These are not substitutes for a physical four-player compatibility/play-balance test.
 

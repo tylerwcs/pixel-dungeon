@@ -89,6 +89,33 @@ test('a host can fill empty slots with AI and start a real game', async ({ page 
   await expect(page.locator('.hud-score').first()).toContainText('0 GOLD');
 });
 
+test('the final podium is shown after four rounds played in full screen', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openLobby(page);
+  for (const slot of [2, 3, 4]) {
+    const card = page.locator('.player-card').nth(slot - 1);
+    await card.getByRole('button', { name: /add ai/i }).click();
+    await expect(card.getByRole('button', { name: /ai player/i })).toBeVisible();
+  }
+  await page.locator('.player-card').first().getByRole('button', { name: /press ready/i }).click();
+  await page.getByRole('button', { name: /start chase/i }).click();
+  await page.locator('#fullscreen').click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.tagName ?? null)).toBe('HTML');
+
+  // Player 1 stands still, so every round ends in a catch; advance through rounds 1-3.
+  for (let round = 1; round < 4; round++) {
+    await page.locator('#continue').click({ timeout: 40_000 });
+  }
+  await expect(page.locator('#podiumScreen')).toBeVisible({ timeout: 40_000 });
+  const topmost = await page.evaluate(() => {
+    const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return { insidePodium: !!hit?.closest('#podiumScreen'), fullscreen: document.fullscreenElement?.tagName ?? null };
+  });
+  expect(topmost.fullscreen).toBe('HTML');
+  expect(topmost.insidePodium).toBe(true);
+});
+
 for (const viewport of [
   { width: 1920, height: 1080, label: 'fullscreen' },
   { width: 1280, height: 720, label: 'zoomed desktop' },

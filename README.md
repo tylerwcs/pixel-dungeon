@@ -12,7 +12,7 @@ A local multiplayer browser game for 1–4 people: one collector, three pursuers
 
 ## Character passes and matchmaking
 
-The crew runs `/booth/` on one device. Enter the attendee's name and use **Use live camera → Take photo & start**, or choose an existing photo and press **Start generation & show QR**. Photos are resized before upload. Once the upload is accepted, a personal progress QR appears and the capture form is available for the next attendee. The QR remains visible while the next photo is taken, and the recent-attendee list can show earlier QRs again after a page refresh.
+The crew runs `/booth/` on one device. Enter the attendee's name and use **Use live camera → Take photo & start**, or choose an existing photo and press **Start generation & show QR**. Photos are resized before upload. Once the upload is accepted, the capture form is replaced by a personal progress QR. Help the guest scan it, then press **Generate next character** to return to a fresh capture form while generation continues. The corner history icon opens recent attendees to recover earlier QRs, including after a page refresh.
 
 Attendees scan that QR with their phone camera to open `/character/`. The page polls real stages: photo received, walking animation, waving animation, finishing, ready. They can leave the booth while this runs. When ready, they see both animations and can prepare, save, or share separate six-second H.264 MP4 clips. MP4 export runs locally in a Web Worker using WebAssembly, has a solid navy background, and does not upload anything to Instagram or require an Instagram account. There are no sprite-sheet downloads in the attendee flow. Actual sharing to a phone's photo library depends on its browser/share sheet.
 

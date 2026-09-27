@@ -1,17 +1,18 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crew Photo Booth · Pixel Dungeon Chase</title><link rel="stylesheet" href="../style.css?v=celestial-10"><link rel="stylesheet" href="booth.css?v=queue-1"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crew Photo Booth · Pixel Dungeon Chase</title><link rel="stylesheet" href="../style.css?v=celestial-10"><link rel="stylesheet" href="booth.css?v=queue-2"></head>
 <body><main class="booth-shell crew-shell">
-  <header class="crew-heading"><p class="eyebrow">ECOPIALAND · PHOTO BOOTH</p><h1>A photo here. A character on their phone.</h1><p>Enter a name, take a photo, then let the attendee scan their QR. You can help the next person while their character is created.</p></header>
+  <img class="booth-masthead" src="../assets/yep-event-logo.webp" alt="Ecopialand Year End Party 2026">
+  <button id="openRecent" class="history-button" type="button" aria-label="Recent attendees" title="Recent attendees" aria-haspopup="dialog" aria-controls="recentDialog"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 4v5h5M3.5 9a9 9 0 1 1-.1 6M12 7v5l3 2"/></svg></button>
   <section class="booth-card" id="forge" aria-labelledby="forgeTitle">
-    <div class="booth-card-heading"><div><p class="eyebrow">1 · NEXT ATTENDEE</p><h2 id="forgeTitle">Ready for your close-up?</h2></div><span id="activeCount" class="pill">0 generating</span></div>
+    <div class="booth-card-heading"><div><p class="eyebrow">1 · PHOTO</p><h1 id="forgeTitle">Create a character</h1></div><span id="activeCount" class="pill">0 generating</span></div>
     <label class="name-field">Attendee’s character name<input id="characterName" maxlength="28" autocomplete="off" placeholder="e.g. Mina"></label>
     <div class="booth-stage"><img id="photoPreview" alt="Selected attendee photo" hidden><video id="cameraPreview" playsinline muted hidden></video><span id="photoPlaceholder">YOUR PHOTO</span></div>
     <div class="booth-controls"><label class="upload-button">Choose photo<input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp"></label><button id="startCamera" class="secondary-button" type="button">Use live camera</button><button id="capturePhoto" class="primary-button" type="button" hidden>Take photo & start</button><button id="clearPhoto" class="text-button" type="button">Retake / clear photo</button></div>
     <p id="boothError" class="error" role="alert"></p><button id="generateCharacter" class="primary-button wide" type="button" disabled>Start generation & show QR</button><p id="crewStatus" class="crew-note" role="status">The camera starts generation immediately after taking the photo.</p>
   </section>
-  <aside class="booth-card ticket-card" aria-labelledby="ticketTitle"><p class="eyebrow">2 · SCAN & GO</p><h2 id="ticketTitle">Your character is on its way</h2>
-    <div id="ticketEmpty" class="ticket-empty">An attendee’s personal QR appears here once their photo is uploaded.</div>
-    <div id="ticketContent" hidden><h3 id="ticketName"></h3><canvas id="progressQR" width="260" height="260" aria-label="Personal character progress QR"></canvas><p id="ticketStatus" role="status"></p><p>Scan this QR with your phone camera. Follow your progress, save your animations, and collect your character pass.</p><a id="progressLink" class="secondary-button" target="_blank" rel="noopener">Open progress page ↗</a></div>
-    <div class="recent-heading"><h3>Recent attendees</h3><p>Tap a name to show their QR again.</p></div><ul id="recentTickets" class="recent-tickets"></ul>
-  </aside>
-</main><script type="module" src="booth.mjs?v=queue-1"></script></body></html>
+  <section id="ticketCard" class="booth-card ticket-card" aria-labelledby="ticketTitle" hidden><p class="eyebrow">2 · SCAN & GO</p><h2 id="ticketTitle" tabindex="-1">Scan to follow your character</h2>
+    <h3 id="ticketName"></h3><canvas id="progressQR" width="260" height="260" aria-label="Personal character progress QR"></canvas><p id="ticketStatus" role="status"></p><p>Ask the guest to scan this QR with their phone. They can follow generation, save their animations, and collect their character pass.</p><button id="nextCharacter" class="primary-button wide" type="button">Generate next character →</button>
+  </section>
+</main>
+<dialog id="recentDialog" class="recent-dialog" aria-labelledby="recentTitle"><div class="recent-heading"><h2 id="recentTitle">Recent attendees</h2><button id="closeRecent" class="history-button" type="button" aria-label="Close recent attendees">×</button></div><p>Choose a guest to show their QR again.</p><p id="recentEmpty">No attendees yet. Take a photo to get started.</p><ul id="recentTickets" class="recent-tickets"></ul></dialog>
+<script type="module" src="booth.mjs?v=queue-2"></script></body></html>

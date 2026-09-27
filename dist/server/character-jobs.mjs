@@ -1,4 +1,4 @@
-import {buildCharacterPrompt,buildWavePrompt,characterRecord,clientKey,generateSheet,generationRateLimit,memoryRateLimiter,sameOrigin,sanitizeCharacterName,validatePhoto} from './character-api.mjs';
+import {buildCharacterPortraitPrompt,buildCharacterPrompt,buildWavePrompt,characterRecord,clientKey,generateSheet,generationRateLimit,memoryRateLimiter,sameOrigin,sanitizeCharacterName,validatePhoto} from './character-api.mjs';
 import {hashToken,tokenMatches,validId} from './tokens.mjs';
 
 export const JOB_TTL_MS=24*60*60*1000;
@@ -22,10 +22,12 @@ async function runJob(job,photo,env,options){
   const update=async(status,extra={})=>{job={...job,status,...extra};await storage.put(job.id,job);};
   const failure=message=>Object.assign(new Error(message),{publicMessage:message});
   const ensureTime=()=>{if(signal.aborted||now()>Date.parse(job.deadlineAt))throw failure(timeoutMessage);};
-  const generate=async(image,prompt,useStyleReference=false)=>{ensureTime();const result=await generateSheet(image,prompt,env,{...options,signal},useStyleReference);if(result instanceof Response)throw failure((await result.json()).error);ensureTime();return result;};
+  const generate=async(image,prompt,useStyleReference=false,imageSize)=>{ensureTime();const result=await generateSheet(image,prompt,env,{...options,signal,imageSize},useStyleReference);if(result instanceof Response)throw failure((await result.json()).error);ensureTime();return result;};
   try{
-    await update('walking');const walk=await generate(photo,buildCharacterPrompt(),true);photo=null;
-    await update('waving');const wave=await generate(new Blob([walk],{type:'image/png'}),buildWavePrompt());
+    await update('designing');const portrait=await generate(photo,buildCharacterPortraitPrompt(),true,'1024x1024');photo=null;
+    const design=new Blob([portrait],{type:'image/png'});
+    await update('walking');const walk=await generate(design,buildCharacterPrompt());
+    await update('waving');const wave=await generate(design,buildWavePrompt());
     await update('saving');ensureTime();
     await options.characterStorage.put(job.id,walk,{name:job.name,createdAt:job.createdAt,claimHash:job.tokenHash,hasWave:'true'},wave);
     await update('complete');

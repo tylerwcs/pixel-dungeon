@@ -17,9 +17,11 @@ test('two attendees receive private QR receipts before either generation finishe
   assert.match((await a.json()).progressUrl,new RegExp(`/character/\\?job=${first}#access=`));
   await new Promise(resolve=>setImmediate(resolve));assert.equal(release.length,2);
   for(const input of inputs){const images=input.getAll('image[]');assert.equal(images.length,2);assert.equal(await images[0].text(),'private photo');assert.equal(images[1].name,'style-a.png');assert.equal(images[1].size,678168);}
-  assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'walking');
+  assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'designing');
   assert.equal((await harness.call(statusRequest(first,'bad'))).status,404);
   assert.equal(JSON.stringify([...harness.records.values()]).includes(token),false);assert.equal(JSON.stringify([...harness.records.values()]).includes('private photo'),false);
+  release.splice(0).forEach(resolve=>resolve());await new Promise(resolve=>setImmediate(resolve));
+  assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'walking');
   release.splice(0).forEach(resolve=>resolve());await new Promise(resolve=>setImmediate(resolve));
   assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'waving');
   release.splice(0).forEach(resolve=>resolve());await Promise.all(harness.tasks);

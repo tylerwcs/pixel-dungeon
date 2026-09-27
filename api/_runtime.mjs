@@ -2,9 +2,15 @@ import {characterRecord} from '../worker/character-api.mjs';
 import {get,put} from '@vercel/blob';
 import {Redis} from '@upstash/redis';
 import {handleAppApi} from '../worker/app-api.mjs';
+import {waitUntil} from '@vercel/functions';
 
 const redis=Redis.fromEnv();
 const WEEK=7*24*60*60;
+const jobStorage={
+  async get(id){return redis.get(`character-job:${id}`);},
+  async create(id,job){return await redis.set(`character-job:${id}`,job,{nx:true,ex:86400})==='OK';},
+  async put(id,job){await redis.set(`character-job:${id}`,job,{ex:86400});}
+};
 
 const characterStorage={
   async list(){const ids=await redis.lrange('characters:recent',0,59),items=await Promise.all(ids.map(id=>redis.get(`character:${id}`)));return items.map((item,index)=>item&&characterRecord(ids[index],item.name,item.createdAt,item.hasWave)).filter(Boolean);},
@@ -28,4 +34,4 @@ const rateLimiter={
   async hit(key,now,limit,windowMs){const bucket=`ratelimit:generate:${key}:${Math.floor(now/windowMs)}`,count=await redis.incr(bucket);if(count===1)await redis.expire(bucket,Math.ceil(windowMs/1000));return count<=limit;}
 };
 
-export const vercelHandler={async fetch(request){return handleAppApi(request,process.env,{characterStorage,sessionStore,rateLimiter});}};
+export const vercelHandler={async fetch(request){return handleAppApi(request,process.env,{characterStorage,sessionStore,rateLimiter,jobStorage,defer:waitUntil});}};

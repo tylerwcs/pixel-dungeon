@@ -6,6 +6,7 @@
   <title>Choose Your Slot · Pixel Dungeon Chase</title>
   <link rel="stylesheet" href="../style.css?v=celestial-10">
   <link rel="stylesheet" href="../handoff.css?v=gallery-3">
+  <link rel="stylesheet" href="../character.css?v=queue-1">
 </head>
 <body class="join-page">
   <main class="slot-picker-shell">
@@ -15,6 +16,8 @@
         <h1 id="slotPickerTitle">Choose your slot</h1>
         <p id="joinCopy">Tap an available quadrant to join the game.</p>
       </header>
+      <div id="scanIntro" class="scan-intro" hidden>Your character pass is ready. Scan the lobby QR on the game screen to choose a player slot.</div>
+      <button id="scanLobby" class="secondary-button scan-lobby-button" type="button">Scan lobby QR</button>
       <div id="slotGrid" class="slot-grid" aria-live="polite"></div>
       <section id="selectedCharacter" class="guest-character" hidden>
         <canvas id="joinImage" class="guest-character-sprite" width="220" height="220" aria-label="Selected pixel character"></canvas>
@@ -38,6 +41,7 @@
     <h2 id="characterLibraryTitle">Choose your character</h2>
     <div id="characterGrid" class="character-grid"></div>
   </dialog>
-  <script type="module" src="join.mjs?v=wave-1"></script>
+  <dialog id="lobbyScanner" class="scanner-dialog" aria-label="Scan a lobby QR"></dialog>
+  <script type="module" src="join.mjs?v=queue-1"></script>
 </body>
 </html>

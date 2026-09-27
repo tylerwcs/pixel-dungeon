@@ -1,3 +1,5 @@
+import {mountLobbyScanner} from '../lobby-scanner.mjs?v=queue-1';
+import {readPass} from '../job-client.mjs?v=queue-1';
 import {loadCharacterAsset,drawGreeting} from '../render.mjs?v=wave-1';
 const $=id=>document.getElementById(id),passKey='pixel-dungeon-character-pass',guestKey='pixel-dungeon-guest-controller',params=new URLSearchParams(location.search);
 const lobby=params.get('lobby'),lobbyToken=params.get('token'),slotKey=`pixel-dungeon-slot-${lobby||'none'}`,colors=['#bade80','#c7a7ff','#ff9f82','#84e8ff'];
@@ -6,7 +8,7 @@ let pass,characters=[],character,currentLobby,selectedSlot=Number(localStorage.g
 function status(message,error=false){$('joinStatus').textContent=message;$('joinStatus').classList.toggle('error',error);}
 function escapeHTML(value){return String(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));}
 function validInvite(){return /^[0-9a-f-]{36}$/i.test(lobby||'')&&typeof lobbyToken==='string'&&lobbyToken.length>10;}
-function loadPass(){try{pass=JSON.parse(localStorage.getItem(passKey)||'null');}catch{pass=null;}return pass?.id?pass:null;}
+function loadPass(){pass=readPass();return pass?.id?pass:null;}
 function guestToken(){let token=localStorage.getItem(guestKey);if(!token||token.length<20){token=crypto.randomUUID();localStorage.setItem(guestKey,token);}return token;}
 function slotState(slot){if(slot.slot===selectedSlot)return 'yours';if(slot.status==='joined')return 'occupied';if(slot.status==='ai')return 'ai';return 'open';}
 const portraits=new Map();
@@ -40,7 +42,7 @@ function renderSlots(){
   $('joinCopy').textContent=selectedSlot?`You are Player ${selectedSlot}. Choose another open quadrant to switch.`:'Tap an available quadrant to join the game.';
 }
 
-async function loadCharacters(){const response=await fetch('/api/characters',{cache:'no-store'}),data=await response.json();if(!response.ok)throw new Error(data.error||'The character library could not be loaded.');characters=Array.isArray(data.characters)?data.characters:[];loadPass();character=characters.find(item=>item.id===pass?.id)||characters[0]||null;renderCharacter();}
+async function loadCharacters(){const response=await fetch('/api/characters',{cache:'no-store'}),data=await response.json();if(!response.ok)throw new Error(data.error||'The character library could not be loaded.');characters=Array.isArray(data.characters)?data.characters:[];loadPass();if(pass?.id&&!characters.some(item=>item.id===pass.id)){const response=await fetch(`/api/characters/${encodeURIComponent(pass.id)}/pass`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({claimToken:pass.claimToken})});if(response.ok)characters.unshift((await response.json()).character);}character=characters.find(item=>item.id===pass?.id)||characters[0]||null;renderCharacter();}
 async function refreshLobby(showErrors=false){if(!validInvite()||pollPending)return;pollPending=true;try{const response=await fetch(`/api/lobbies/${encodeURIComponent(lobby)}`,{cache:'no-store'}),data=await response.json();if(!response.ok)throw new Error(data.error||'The lobby could not be loaded.');currentLobby=data.lobby;renderSlots();}catch(error){if(showErrors)status(error.message,true);}finally{pollPending=false;}}
 
 async function claim(slot){if(!character)return;try{status(`Moving ${character.name} to Player ${slot}…`);const response=await fetch(`/api/lobbies/${encodeURIComponent(lobby)}/slots/${slot}/claim`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({lobbyToken,characterId:character.id,guestToken:guestToken()})}),data=await response.json();if(!response.ok)throw new Error(data.error||'That slot could not be joined.');currentLobby=data.lobby;selectedSlot=slot;localStorage.setItem(slotKey,String(slot));renderSlots();status(`${character.name} is now Player ${slot}.`);}catch(error){status(error.message,true);await refreshLobby();}}
@@ -51,8 +53,11 @@ $('chooseCharacter').onclick=openCharacterLibrary;
 $('browseCharacters').onclick=openCharacterLibrary;
 
 async function load(){
-  if(!validInvite()){$('joinCopy').textContent='Scan the shared lobby QR from the matchmaking screen.';status('No active lobby invitation was found.',true);return;}
+  const invited=validInvite();$('slotGrid').hidden=!invited;$('scanIntro').hidden=invited;
+  if(!invited){$('slotPickerTitle').textContent='Join the dungeon';$('joinCopy').textContent='Scan the shared lobby QR from the game screen.';}
   try{await loadCharacters();}catch(error){status(error.message,true);$('noCharacters').hidden=false;}
+  if(!invited){$('scanIntro').textContent=pass?.id?'Your character pass is ready. Scan the lobby QR on the game screen to choose a player slot.':'Scan the game screen’s lobby QR, then choose a character and player slot.';status('Ready to scan a lobby QR.');return;}
   await refreshLobby(true);setInterval(()=>refreshLobby(),1500);
 }
+$('scanLobby').onclick=mountLobbyScanner($('lobbyScanner'),url=>location.assign(url));
 load();

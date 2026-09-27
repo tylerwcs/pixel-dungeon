@@ -13,7 +13,7 @@ export function resolveStaticRoute(pathname, assets) {
 }
 
 export function cacheControlFor(pathname) {
-  return /\.(?:html|mjs|css)$/.test(pathname)
+  return /\.(?:html|mjs|js|css)$/.test(pathname)
     ? "no-cache"
     : "public, max-age=3600";
 }

@@ -1,23 +1,58 @@
 import {drawQR} from '../qr.mjs';
-import {loadCharacterAsset,drawGreeting} from '../render.mjs?v=wave-1';
-
-const $=id=>document.getElementById(id);
-let photoFile=null,cameraStream=null,generatedAsset=null,animationFrame=0,revealTime=0;
-
-const fileDataURL=file=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('This photo could not be read.'));reader.readAsDataURL(file);});
-function stopCamera(){if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null;}$('cameraPreview').srcObject=null;$('cameraPreview').hidden=true;$('capturePhoto').hidden=true;$('startCamera').hidden=!navigator.mediaDevices?.getUserMedia;}
-function setBusy(busy){$('forge').classList.toggle('generating',busy);$('generateCharacter').disabled=busy||!photoFile||!$('characterName').value.trim();$('generateCharacter').innerHTML=busy?'Creating your character…':'Create pixel character <span>✦</span>';$('photoFile').disabled=busy;$('startCamera').disabled=busy;$('characterName').disabled=busy;}
-async function choosePhoto(file){$('boothError').textContent='';if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){$('boothError').textContent='Use a JPEG, PNG, or WebP photo.';return;}if(file.size>8*1024*1024){$('boothError').textContent='This photo is over 8 MB. Choose a smaller image.';return;}photoFile=file;$('photoPreview').src=await fileDataURL(file);$('photoPreview').hidden=false;$('photoPlaceholder').hidden=true;setBusy(false);}
-async function refreshCount(){try{const response=await fetch('/api/characters',{cache:'no-store'}),data=await response.json();if(response.ok)$('libraryCount').textContent=`${data.count} character${data.count===1?'':'s'} ready`;}catch{$('libraryCount').textContent='Booth unavailable';}}
-
-$('photoFile').onchange=()=>choosePhoto($('photoFile').files[0]);
-$('characterName').addEventListener('input',()=>setBusy(false));
+import {readJob,stageLabels} from '../job-client.mjs?v=queue-1';
+const $=id=>document.getElementById(id),historyKey='pixel-dungeon-booth-tickets';
+let photoFile=null,cameraStream=null,busy=false,preparing=false,pendingTicket=null,selectedId=null,polling=false;
+let tickets=[];try{tickets=JSON.parse(localStorage.getItem(historyKey)||'[]').filter(item=>item.id&&item.token&&Date.now()-Date.parse(item.createdAt)<86400000).slice(0,40);}catch{}
+function persist(){try{localStorage.setItem(historyKey,JSON.stringify(tickets));}catch{$('boothError').textContent='This browser cannot save recent QR tickets. Keep each QR open until the attendee has scanned it.';}}
+function controls(){const name=!!$('characterName').value.trim();$('generateCharacter').disabled=busy||preparing||!photoFile||!name;$('capturePhoto').disabled=busy||preparing||!name;$('photoFile').disabled=busy||preparing;$('startCamera').disabled=busy||preparing;$('characterName').disabled=busy;$('clearPhoto').disabled=busy||preparing;$('generateCharacter').textContent=busy?'Uploading photo…':'Start generation & show QR';}
+function stopCamera(){cameraStream?.getTracks().forEach(track=>track.stop());cameraStream=null;$('cameraPreview').srcObject=null;$('cameraPreview').hidden=true;$('capturePhoto').hidden=true;$('startCamera').hidden=!navigator.mediaDevices?.getUserMedia;}
+function clearPhoto(){photoFile=null;pendingTicket=null;$('photoFile').value='';$('photoPreview').removeAttribute('src');$('photoPreview').hidden=true;$('photoPlaceholder').hidden=false;}
+async function choosePhoto(file){
+  if(!file)return false;preparing=true;controls();$('boothError').textContent='';
+  try{
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Choose a JPEG, PNG, or WebP photo.');
+    if(file.size>8*1024*1024)throw new Error('Choose a photo smaller than 8 MB.');
+    const url=URL.createObjectURL(file),image=new Image();try{image.src=url;await image.decode();}finally{URL.revokeObjectURL(url);}
+    const scale=Math.min(1,1024/Math.max(image.width,image.height)),canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.9));if(!blob)throw new Error('This photo could not be prepared. Try another.');
+    stopCamera();photoFile=new File([blob],'attendee.jpg',{type:'image/jpeg'});pendingTicket=null;
+    $('photoPreview').src=canvas.toDataURL('image/jpeg',.8);$('photoPreview').hidden=false;$('photoPlaceholder').hidden=true;return true;
+  }catch(error){$('boothError').textContent=error.message;return false;}
+  finally{preparing=false;controls();}
+}
+function showTicket(ticket){
+  selectedId=ticket.id;$('ticketEmpty').hidden=true;$('ticketContent').hidden=false;$('ticketName').textContent=ticket.name;
+  const url=`${location.origin}/character/?job=${ticket.id}#access=${encodeURIComponent(ticket.token)}`;
+  drawQR($('progressQR'),url);$('progressLink').href=url;$('ticketStatus').textContent=stageLabels[ticket.status]||'Photo received';
+}
+function renderTickets(){
+  const list=$('recentTickets');list.replaceChildren();
+  for(const ticket of tickets){const item=document.createElement('li'),button=document.createElement('button'),name=document.createElement('strong'),status=document.createElement('small');button.type='button';name.textContent=ticket.name;status.textContent=`${new Date(ticket.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · ${stageLabels[ticket.status]||'Photo received'}`;button.append(name,status);button.onclick=()=>showTicket(ticket);item.append(button);list.append(item);}
+  $('activeCount').textContent=`${tickets.filter(item=>!['complete','failed'].includes(item.status)).length} generating`;
+  const selected=tickets.find(item=>item.id===selectedId);if(selected)$('ticketStatus').textContent=stageLabels[selected.status]||'Photo received';
+}
+async function submit(){
+  if(busy||preparing||!photoFile||!$('characterName').value.trim())return;
+  busy=true;controls();$('boothError').textContent='';
+  pendingTicket||={id:crypto.randomUUID(),token:crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-','')};
+  try{
+    const form=new FormData();form.append('name',$('characterName').value.trim());form.append('photo',photoFile);form.append('requestId',pendingTicket.id);form.append('accessToken',pendingTicket.token);
+    const response=await fetch('/api/character-jobs',{method:'POST',body:form}),data=await response.json();if(!response.ok)throw new Error(data.error||'The upload failed. Try again.');
+    const ticket={...pendingTicket,...data.job};tickets=[ticket,...tickets.filter(item=>item.id!==ticket.id)].slice(0,40);persist();showTicket(ticket);renderTickets();
+    clearPhoto();$('characterName').value='';$('crewStatus').textContent='QR ready. The next attendee can take their photo now.';
+  }catch(error){$('boothError').textContent=error.message||'Upload interrupted. Try again with the same photo; it will not create a duplicate.';}
+  finally{busy=false;controls();$('characterName').focus();}
+}
+async function pollTickets(){
+  if(polling||document.hidden)return;polling=true;
+  try{await Promise.all(tickets.filter(item=>!['complete','failed'].includes(item.status)).map(async ticket=>{try{Object.assign(ticket,await readJob(ticket));}catch(error){if([404,410].includes(error.status))ticket.status='failed';}}));persist();renderTickets();}finally{polling=false;}
+}
+$('photoFile').onchange=()=>choosePhoto($('photoFile').files[0]);$('characterName').oninput=controls;$('generateCharacter').onclick=submit;
 $('startCamera').hidden=!navigator.mediaDevices?.getUserMedia;
-$('startCamera').onclick=async()=>{stopCamera();$('boothError').textContent='';try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});const video=$('cameraPreview');video.srcObject=cameraStream;video.hidden=false;$('photoPreview').hidden=true;$('photoPlaceholder').hidden=true;$('capturePhoto').hidden=false;await video.play();}catch{$('boothError').textContent='Camera access was unavailable. Choose a photo instead.';stopCamera();}};
-$('capturePhoto').onclick=()=>{const video=$('cameraPreview'),source=Math.min(video.videoWidth,video.videoHeight),size=Math.min(source||1024,1024),canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;const context=canvas.getContext('2d'),sx=(video.videoWidth-source)/2,sy=(video.videoHeight-source)/2;context.drawImage(video,sx,sy,source,source,0,0,size,size);canvas.toBlob(blob=>{if(blob)choosePhoto(new File([blob],'booth-photo.jpg',{type:'image/jpeg'}));else $('boothError').textContent='The snapshot could not be captured.';},'image/jpeg',.9);stopCamera();};
+$('startCamera').onclick=async()=>{stopCamera();$('boothError').textContent='';try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});$('cameraPreview').srcObject=cameraStream;$('cameraPreview').hidden=false;$('photoPreview').hidden=true;$('photoPlaceholder').hidden=true;$('capturePhoto').hidden=false;await $('cameraPreview').play();controls();}catch{$('boothError').textContent='Camera access is unavailable. Allow camera access or choose a photo.';stopCamera();}};
+$('capturePhoto').onclick=async()=>{const video=$('cameraPreview');if(!video.videoWidth)return;const canvas=document.createElement('canvas'),scale=Math.min(1,1024/Math.max(video.videoWidth,video.videoHeight));canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.9));if(blob&&await choosePhoto(new File([blob],'attendee.jpg',{type:'image/jpeg'})))await submit();};
+$('clearPhoto').onclick=()=>{if(busy)return;stopCamera();clearPhoto();controls();};
+const pollTimer=setInterval(pollTickets,3000);window.addEventListener('pagehide',()=>{stopCamera();clearInterval(pollTimer);},{once:true});
+renderTickets();if(tickets.length)showTicket(tickets[0]);controls();pollTickets();
 
-function drawResult(time){if(!generatedAsset)return;const canvas=$('resultPreview'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);drawGreeting(ctx,generatedAsset,canvas.width/2,canvas.height/2,Math.min(canvas.width,canvas.height)-28,(time-revealTime)/1000);animationFrame=requestAnimationFrame(drawResult);}
-$('generateCharacter').onclick=async()=>{if(!photoFile)return;setBusy(true);$('boothError').textContent='';try{const body=new FormData();body.append('name',$('characterName').value.trim());body.append('photo',photoFile,photoFile.name||'booth-photo.jpg');const response=await fetch('/api/characters/generate',{method:'POST',body}),data=await response.json().catch(()=>({error:'The booth returned an unreadable response.'}));if(!response.ok)throw new Error(data.error||'The character could not be generated.');const characterURL=`${data.character.imageUrl}?v=${encodeURIComponent(data.character.createdAt)}`;generatedAsset=await loadCharacterAsset(data.character);cancelAnimationFrame(animationFrame);revealTime=performance.now();animationFrame=requestAnimationFrame(drawResult);drawQR($('passQR'),data.passUrl);$('savePass').href=data.passUrl;$('downloadCharacter').href=characterURL;$('downloadCharacter').download=`${data.character.name.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase()||'pixel-dungeon-character'}.png`;$('downloadWave').hidden=!data.character.wave;if(data.character.wave){$('downloadWave').href=data.character.wave.imageUrl;$('downloadWave').download=$('downloadCharacter').download.replace(/\.png$/,'-wave.png');}$('resultName').textContent=data.character.name;$('forge').hidden=true;$('result').hidden=false;await refreshCount();}catch(error){$('boothError').textContent=error.message;setBusy(false);}};
-$('makeAnother').onclick=()=>{cancelAnimationFrame(animationFrame);generatedAsset=null;photoFile=null;$('photoFile').value='';$('photoPreview').removeAttribute('src');$('photoPreview').hidden=true;$('photoPlaceholder').hidden=false;$('characterName').value='';$('result').hidden=true;$('forge').hidden=false;setBusy(false);$('characterName').focus();};
-window.addEventListener('pagehide',()=>{stopCamera();cancelAnimationFrame(animationFrame);},{once:true});
-refreshCount();
+window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleAppApi } from "../worker/app-api.mjs";
+import { memoryJobStorage } from "../worker/character-jobs.mjs";
 
 const projectRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const staticRoot = resolve(projectRoot, "dist");
@@ -15,6 +16,7 @@ const requestedPort = Number.parseInt(process.env.PORT ?? "4173", 10);
 const port = Number.isFinite(requestedPort) ? requestedPort : 4173;
 const localCharacters = new Map();
 const localLobbies = new Map();
+const jobStorage = memoryJobStorage();
 
 const contentTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -50,7 +52,7 @@ async function apiRequest(request, response) {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY || (mockFetch ? "local-mock" : ""),
     OPENAI_IMAGE_MODEL: process.env.OPENAI_IMAGE_MODEL,
     CHARACTER_RATE_LIMIT: process.env.CHARACTER_RATE_LIMIT,
-  }, { store: localCharacters, lobbyStore: localLobbies, ...(mockFetch ? { fetchImpl: mockFetch } : {}) });
+  }, { store: localCharacters, lobbyStore: localLobbies, jobStorage, defer:task=>{task.catch(()=>{});}, ...(mockFetch ? { fetchImpl: mockFetch } : {}) });
   response.writeHead(webResponse.status, Object.fromEntries(webResponse.headers));
   response.end(Buffer.from(await webResponse.arrayBuffer()));
 }

@@ -43,10 +43,10 @@ export function validatePhoto(photo){
 
 export function sanitizeCharacterName(value){const name=String(value||'').replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/g,' ').trim().slice(0,28);if(name.length<1)throw new Error('Enter a character name.');return name;}
 
-function clientKey(request){return request.headers.get('cf-connecting-ip')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'local';}
+export function clientKey(request){return request.headers.get('cf-connecting-ip')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'local';}
 export function generationRateLimit(env={}){const limit=Number(env.CHARACTER_RATE_LIMIT);return Number.isInteger(limit)&&limit>0?limit:DEFAULT_RATE_LIMIT;}
 // In-process limiter for the local server and tests. Multi-instance hosts pass options.rateLimiter backed by shared storage.
-const memoryRateLimiter={async hit(key,now,limit,windowMs){
+export const memoryRateLimiter={async hit(key,now,limit,windowMs){
   const recent=(buckets.get(key)||[]).filter(time=>now-time<windowMs);
   if(recent.length>=limit){buckets.set(key,recent);return false;}
   recent.push(now);buckets.set(key,recent);
@@ -55,7 +55,7 @@ const memoryRateLimiter={async hit(key,now,limit,windowMs){
 }};
 export function resetGenerationRateLimits(){buckets.clear();}
 
-function sameOrigin(request){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return false;return request.headers.get('sec-fetch-site')!=='cross-site';}
+export function sameOrigin(request){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return false;return request.headers.get('sec-fetch-site')!=='cross-site';}
 function friendlyOpenAIError(status,code){if(code==='credit_balance_exhausted'||code==='insufficient_quota')return 'The photo booth has no API credits remaining. Ask the event host to add credits before trying again.';if(status===429)return 'The character forge is busy right now. Wait a moment and try again.';if(status===400)return 'OpenAI could not use that photo. Try a clear, well-lit photo with one person.';if(status===401||status===403)return 'The character forge is not configured correctly yet.';return 'The character could not be generated. Please try again.';}
 function decodeBase64(value){const binary=atob(value),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return bytes;}
 function memoryStorage(map){return {
@@ -85,10 +85,10 @@ async function generateCharacter(request,env,options,storage){
   const character=characterRecord(id,name,createdAt,'true'),origin=new URL(request.url).origin;return json({character,claimToken,passUrl:`${origin}/pass/?character=${id}#claim=${encodeURIComponent(claimToken)}`},201);
 }
 
-async function generateSheet(photo,prompt,env,options){
+export async function generateSheet(photo,prompt,env,options){
   const payload=new FormData();payload.append('model',env.OPENAI_IMAGE_MODEL||'gpt-image-2.5-sunburst');payload.append('image',photo,photo.name||'character.png');payload.append('prompt',prompt);payload.append('size','1024x1024');payload.append('quality','medium');payload.append('background','transparent');payload.append('output_format','png');
   const fetchImpl=options.fetchImpl||fetch;let generated;
-  try{generated=await fetchImpl('https://api.openai.com/v1/images/edits',{method:'POST',headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`},body:payload});}catch{return json({error:'The character service could not be reached. Please try again.'},502);}
+  try{generated=await fetchImpl('https://api.openai.com/v1/images/edits',{method:'POST',headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`},body:payload,...(options.signal?{signal:options.signal}:{})});}catch{return json({error:options.signal?.aborted?'Generation took too long. Please ask the booth crew to try again.':'The character service could not be reached. Please try again.'},502);}
   if(!generated.ok){let failure;try{failure=await generated.json();}catch{}const code=failure?.error?.code||failure?.error?.type;return json({error:friendlyOpenAIError(generated.status,code)},code==='credit_balance_exhausted'||code==='insufficient_quota'?503:generated.status===429?429:502);}
   let result;try{result=await generated.json();}catch{return json({error:'The character service returned an unreadable image.'},502);}
   const encoded=result?.data?.[0]?.b64_json;if(typeof encoded!=='string'||!encoded.length)return json({error:'No character image was returned. Please try again.'},502);

@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "dist",
   "functions": {
+    "api/character-jobs.mjs": {
+      "maxDuration": 300
+    },
     "api/characters/generate.mjs": {
       "maxDuration": 300
     },

@@ -1,41 +1,17 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Photo Booth · Pixel Dungeon Chase</title>
-  <meta name="description" content="Turn a photo into a playable pixel character for Pixel Dungeon Chase.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23070c24' d='M0 0h32v32H0z'/%3E%3Cpath fill='%23e8bd69' d='M16 3l3 8 8 3-8 3-3 9-3-9-8-3 8-3z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="../style.css?v=celestial-10">
-  <link rel="stylesheet" href="booth.css?v=wave-1">
-</head>
-<body>
-  <main class="booth-shell">
-    <section class="booth-card" id="forge" aria-labelledby="forgeTitle">
-      <header class="booth-card-heading">
-        <div><p class="eyebrow">AI PHOTO FORGE</p><h1 id="forgeTitle">Create your dungeon character</h1></div>
-        <span id="libraryCount" class="pill">Checking lobby…</span>
-      </header>
-      <label class="name-field">Character name<input id="characterName" maxlength="28" autocomplete="off" placeholder="e.g. Mina"></label>
-      <div class="booth-stage"><img id="photoPreview" alt="Selected photo preview" hidden><video id="cameraPreview" playsinline muted hidden></video><span id="photoPlaceholder">YOUR PHOTO</span></div>
-      <div class="booth-controls">
-        <label class="upload-button">Choose photo<input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp"></label>
-        <button id="startCamera" class="secondary-button" type="button">Use live camera</button>
-        <button id="capturePhoto" class="secondary-button" type="button" hidden>Take snapshot</button>
-      </div>
-      <p class="error" id="boothError" role="alert"></p>
-      <button id="generateCharacter" class="primary-button wide" type="button" disabled>Create pixel character <span>✦</span></button>
-    </section>
-
-    <section class="booth-card result-card" id="result" hidden aria-live="polite">
-      <header class="booth-card-heading"><div><p class="eyebrow">READY FOR THE CHASE</p><h1 id="resultName">Your character</h1></div></header>
-      <div class="result-grid">
-        <canvas id="resultPreview" width="320" height="320" aria-label="Your character waving hello"></canvas>
-        <div class="pass-transfer"><canvas id="passQR" width="220" height="220" aria-label="QR code for saving this character pass"></canvas><strong>SCAN TO MAKE<br>THIS YOUR DEFAULT</strong></div>
-      </div>
-      <div class="result-actions"><a id="savePass" class="primary-button" href="#" target="_blank">Use on this device <span>→</span></a><a id="downloadCharacter" class="secondary-button" href="#" download="pixel-dungeon-character.png">Save walk PNG</a><a id="downloadWave" class="secondary-button" href="#" download="pixel-dungeon-wave.png" hidden>Save wave PNG</a><button id="makeAnother" class="secondary-button" type="button">Make another</button></div>
-    </section>
-  </main>
-  <script type="module" src="booth.mjs?v=wave-1"></script>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crew Photo Booth · Pixel Dungeon Chase</title><link rel="stylesheet" href="../style.css?v=celestial-10"><link rel="stylesheet" href="booth.css?v=queue-1"></head>
+<body><main class="booth-shell crew-shell">
+  <header class="crew-heading"><p class="eyebrow">ECOPIALAND · PHOTO BOOTH</p><h1>A photo here. A character on their phone.</h1><p>Enter a name, take a photo, then let the attendee scan their QR. You can help the next person while their character is created.</p></header>
+  <section class="booth-card" id="forge" aria-labelledby="forgeTitle">
+    <div class="booth-card-heading"><div><p class="eyebrow">1 · NEXT ATTENDEE</p><h2 id="forgeTitle">Ready for your close-up?</h2></div><span id="activeCount" class="pill">0 generating</span></div>
+    <label class="name-field">Attendee’s character name<input id="characterName" maxlength="28" autocomplete="off" placeholder="e.g. Mina"></label>
+    <div class="booth-stage"><img id="photoPreview" alt="Selected attendee photo" hidden><video id="cameraPreview" playsinline muted hidden></video><span id="photoPlaceholder">YOUR PHOTO</span></div>
+    <div class="booth-controls"><label class="upload-button">Choose photo<input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp"></label><button id="startCamera" class="secondary-button" type="button">Use live camera</button><button id="capturePhoto" class="primary-button" type="button" hidden>Take photo & start</button><button id="clearPhoto" class="text-button" type="button">Retake / clear photo</button></div>
+    <p id="boothError" class="error" role="alert"></p><button id="generateCharacter" class="primary-button wide" type="button" disabled>Start generation & show QR</button><p id="crewStatus" class="crew-note" role="status">The camera starts generation immediately after taking the photo.</p>
+  </section>
+  <aside class="booth-card ticket-card" aria-labelledby="ticketTitle"><p class="eyebrow">2 · SCAN & GO</p><h2 id="ticketTitle">Your character is on its way</h2>
+    <div id="ticketEmpty" class="ticket-empty">An attendee’s personal QR appears here once their photo is uploaded.</div>
+    <div id="ticketContent" hidden><h3 id="ticketName"></h3><canvas id="progressQR" width="260" height="260" aria-label="Personal character progress QR"></canvas><p id="ticketStatus" role="status"></p><p>Scan this QR with your phone camera. Follow your progress, save your animations, and collect your character pass.</p><a id="progressLink" class="secondary-button" target="_blank" rel="noopener">Open progress page ↗</a></div>
+    <div class="recent-heading"><h3>Recent attendees</h3><p>Tap a name to show their QR again.</p></div><ul id="recentTickets" class="recent-tickets"></ul>
+  </aside>
+</main><script type="module" src="booth.mjs?v=queue-1"></script></body></html>

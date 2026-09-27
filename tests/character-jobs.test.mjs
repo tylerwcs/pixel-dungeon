@@ -10,18 +10,20 @@ const statusRequest=(id,accessToken=token)=>new Request(`${origin}/api/character
 function setup(fetchImpl){const records=new Map(),store=new Map(),tasks=[];let time=Date.now(),hits=0;const options={store,jobStorage:memoryJobStorage(records),now:()=>time,rateLimiter:{hit:async()=>{hits++;return true;}},fetchImpl:fetchImpl||(async()=>Response.json({data:[{b64_json:btoa('artwork')}]})),defer:task=>tasks.push(task)};return {records,store,tasks,options,call:request=>handleAppApi(request,{OPENAI_API_KEY:'test'},options),advance:ms=>time+=ms,hits:()=>hits};}
 
 test('two attendees receive private QR receipts before either generation finishes',async()=>{
-  const release=[];const harness=setup(async()=>{await new Promise(resolve=>release.push(resolve));return Response.json({data:[{b64_json:btoa('artwork')}]});});
+  const release=[],inputs=[];const harness=setup(async(url,{body})=>{inputs.push(body);await new Promise(resolve=>release.push(resolve));return Response.json({data:[{b64_json:btoa('artwork')}]});});
   const first=crypto.randomUUID(),second=crypto.randomUUID();
   const a=await harness.call(createRequest(first,'Mina')),b=await harness.call(createRequest(second,'Bob','b'.repeat(48)));
   assert.equal(a.status,202);assert.equal(b.status,202);assert.equal(harness.store.size,0);assert.equal(harness.tasks.length,2);
   assert.match((await a.json()).progressUrl,new RegExp(`/character/\\?job=${first}#access=`));
   await new Promise(resolve=>setImmediate(resolve));assert.equal(release.length,2);
+  for(const input of inputs){const images=input.getAll('image[]');assert.equal(images.length,2);assert.equal(await images[0].text(),'private photo');assert.equal(images[1].name,'style-a.png');assert.equal(images[1].size,678168);}
   assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'walking');
   assert.equal((await harness.call(statusRequest(first,'bad'))).status,404);
   assert.equal(JSON.stringify([...harness.records.values()]).includes(token),false);assert.equal(JSON.stringify([...harness.records.values()]).includes('private photo'),false);
   release.splice(0).forEach(resolve=>resolve());await new Promise(resolve=>setImmediate(resolve));
   assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'waving');
   release.splice(0).forEach(resolve=>resolve());await Promise.all(harness.tasks);
+  for(const input of inputs.slice(2)){assert.equal(input.getAll('image[]').length,0);assert.equal(await input.get('image').text(),'artwork');}
   const ready=(await (await harness.call(statusRequest(first))).json()).job;assert.equal(ready.status,'complete');assert.equal(ready.character.id,first);assert.equal(harness.store.size,2);
   const pass=await harness.call(new Request(`${origin}/api/characters/${first}/pass`,{method:'POST',body:JSON.stringify({claimToken:token})}));assert.equal(pass.status,200);
 });

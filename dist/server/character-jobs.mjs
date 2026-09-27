@@ -22,9 +22,9 @@ async function runJob(job,photo,env,options){
   const update=async(status,extra={})=>{job={...job,status,...extra};await storage.put(job.id,job);};
   const failure=message=>Object.assign(new Error(message),{publicMessage:message});
   const ensureTime=()=>{if(signal.aborted||now()>Date.parse(job.deadlineAt))throw failure(timeoutMessage);};
-  const generate=async(image,prompt)=>{ensureTime();const result=await generateSheet(image,prompt,env,{...options,signal});if(result instanceof Response)throw failure((await result.json()).error);ensureTime();return result;};
+  const generate=async(image,prompt,useStyleReference=false)=>{ensureTime();const result=await generateSheet(image,prompt,env,{...options,signal},useStyleReference);if(result instanceof Response)throw failure((await result.json()).error);ensureTime();return result;};
   try{
-    await update('walking');const walk=await generate(photo,buildCharacterPrompt());photo=null;
+    await update('walking');const walk=await generate(photo,buildCharacterPrompt(),true);photo=null;
     await update('waving');const wave=await generate(new Blob([walk],{type:'image/png'}),buildWavePrompt());
     await update('saving');ensureTime();
     await options.characterStorage.put(job.id,walk,{name:job.name,createdAt:job.createdAt,claimHash:job.tokenHash,hasWave:'true'},wave);

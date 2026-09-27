@@ -20,6 +20,7 @@ for(const path of files){const extension=extname(path).toLowerCase(),pathname='/
 mkdirSync(outputRoot,{recursive:true});mkdirSync(join(publicRoot,'.openai'),{recursive:true});
 copyFileSync(join(root,'worker','index.mjs'),join(outputRoot,'index.js'));
 copyFileSync(join(root,'worker','character-api.mjs'),join(outputRoot,'character-api.mjs'));
+copyFileSync(join(root,'worker','character-style-reference.mjs'),join(outputRoot,'character-style-reference.mjs'));
 copyFileSync(join(root,'worker','character-jobs.mjs'),join(outputRoot,'character-jobs.mjs'));
 copyFileSync(join(root,'worker','app-api.mjs'),join(outputRoot,'app-api.mjs'));
 copyFileSync(join(root,'worker','lobby-api.mjs'),join(outputRoot,'lobby-api.mjs'));

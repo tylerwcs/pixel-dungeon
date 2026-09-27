@@ -1,3 +1,4 @@
+import {characterRecord} from './character-api.mjs';
 import {hashToken,randomToken,tokenMatches,validId} from './tokens.mjs';
 
 const LOBBY_TTL_MS=4*60*60*1000;
@@ -57,7 +58,7 @@ export async function handleLobbyApi(request,env={},options={}){
       const previous=lobby.slots.find(candidate=>candidate.guestHash===guestHash);
       if(slot.status==='ai'||(slot.status==='joined'&&slot!==previous))return json({error:'That player slot is already occupied.'},409);
       if(previous&&previous!==slot){previous.status='open';previous.ready=false;previous.character=null;delete previous.guestHash;}
-      slot.status='joined';slot.ready=false;slot.guestHash=guestHash;slot.character={id:input.characterId,name:character.name||'Player character',imageUrl:`/api/characters/${input.characterId}/image`,cols:4,rows:4,fps:8,layout:'directional'};
+      slot.status='joined';slot.ready=false;slot.guestHash=guestHash;slot.character=characterRecord(input.characterId,character.name||'Player character',character.createdAt,character.hasWave);
     });
   }
   if(action==='ready')return updateSlot(storage,id,Number(slotValue)-1,now,async(lobby,slot)=>{

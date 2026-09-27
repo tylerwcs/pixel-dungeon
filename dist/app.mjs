@@ -1,5 +1,5 @@
 import {newRound,nextCollector,step,roundScores,rankScores,COLORS,GAME_ROUNDS,CATCH_BONUS} from './engine.mjs';
-import {loadImage,drawSprite,defaults,identityAsset,playerNames,createRenderer} from './render.mjs?v=names-1';
+import {loadImage,loadCharacterAsset,drawGreeting,drawSprite,defaults,identityAsset,playerNames,createRenderer} from './render.mjs?v=wave-1';
 import {roundHeadline,roundRows} from './labels.mjs';
 import {readSettings,writeSettings} from './preferences.mjs';
 import {connectedPads,controlsAvailable,gamepadDirection} from './input.mjs';
@@ -51,7 +51,7 @@ async function applyLobby(serverLobby){
     if(slot.status==='ai'){player.control='ai';player.booth=null;player.remoteCharacterId=null;player.ready=true;}
     if(slot.status==='joined'){
       if(slot.character&&(previousStatus!=='joined'||player.control==='ai'))assignControl(index);
-      if(slot.character&&player.remoteCharacterId!==slot.character.id){const asset={src:slot.character.imageUrl,cols:slot.character.cols,rows:slot.character.rows,fps:slot.character.fps,layout:slot.character.layout,name:slot.character.name};try{await loadImage(asset.src);player.booth=asset;player.remoteCharacterId=slot.character.id;}catch{toast(`Player ${slot.slot}’s character could not be loaded.`);}}
+      if(slot.character&&player.remoteCharacterId!==slot.character.id){try{player.booth=await loadCharacterAsset(slot.character);player.remoteCharacterId=slot.character.id;}catch{toast(`Player ${slot.slot}’s character could not be loaded.`);}}
     }
   }
   if(lobby)state=newRound(players,state.collector,state.round);renderPlayers();
@@ -124,9 +124,9 @@ function frame(now){
   const delta=Math.min((now-last)/1000,.1);last=now;pollPads();
   if(!lobby){accumulator+=delta;while(accumulator>=1/60){const events=step(state,1/60);events.forEach(beep);if(state.phase==='result')settleRound();accumulator-=1/60;}}else accumulator=0;
   updateOverlay();updateScoreHud();render(state,players,now/1000);$('coins').textContent=state.coins.size;$('roundLabel').textContent=`ROUND ${String(state.round).padStart(2,'0')} / ${String(GAME_ROUNDS).padStart(2,'0')}`;$('roundCrown').textContent=`ROUND ${String(state.round).padStart(2,'0')} / ${String(GAME_ROUNDS).padStart(2,'0')}`;$('statusLabel').textContent=lobby?'WAITING FOR PARTY':state.phase==='playing'?'CHASE IN PROGRESS':state.phase.toUpperCase();
-  document.querySelectorAll('.portrait').forEach((canvas,index)=>{const context=canvas.getContext('2d');context.clearRect(0,0,canvas.width,canvas.height);if(players[index].slotStatus==='open')return;drawSprite(context,playerAsset(index),110,104,190,now/1000);});
+  document.querySelectorAll('.portrait').forEach((canvas,index)=>{const context=canvas.getContext('2d');context.clearRect(0,0,canvas.width,canvas.height);if(players[index].slotStatus==='open')return;drawGreeting(context,playerAsset(index),110,104,190,now/1000+index*.35);});
   document.querySelectorAll('.game-portrait').forEach(canvas=>{const index=Number(canvas.dataset.player),context=canvas.getContext('2d');context.clearRect(0,0,canvas.width,canvas.height);drawSprite(context,playerAsset(index),88,88,156,now/1000);});
-  document.querySelectorAll('.podium-portrait').forEach(canvas=>{const context=canvas.getContext('2d'),index=Number(canvas.dataset.podiumPlayer);context.clearRect(0,0,canvas.width,canvas.height);drawSprite(context,playerAsset(index),110,108,190,now/1000);});
+  document.querySelectorAll('.podium-portrait').forEach(canvas=>{const context=canvas.getContext('2d'),index=Number(canvas.dataset.podiumPlayer);context.clearRect(0,0,canvas.width,canvas.height);drawGreeting(context,playerAsset(index),110,108,190,now/1000+index*.35);});
   requestAnimationFrame(frame);
 }
 

@@ -7,7 +7,7 @@
   <meta name="description" content="Turn a photo into a playable pixel character for Pixel Dungeon Chase.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23070c24' d='M0 0h32v32H0z'/%3E%3Cpath fill='%23e8bd69' d='M16 3l3 8 8 3-8 3-3 9-3-9-8-3 8-3z'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="../style.css?v=celestial-10">
-  <link rel="stylesheet" href="booth.css?v=portrait-1">
+  <link rel="stylesheet" href="booth.css?v=wave-1">
 </head>
 <body>
   <main class="booth-shell">
@@ -30,12 +30,12 @@
     <section class="booth-card result-card" id="result" hidden aria-live="polite">
       <header class="booth-card-heading"><div><p class="eyebrow">READY FOR THE CHASE</p><h1 id="resultName">Your character</h1></div></header>
       <div class="result-grid">
-        <canvas id="resultPreview" width="320" height="320" aria-label="Generated pixel character preview"></canvas>
+        <canvas id="resultPreview" width="320" height="320" aria-label="Your character waving hello"></canvas>
         <div class="pass-transfer"><canvas id="passQR" width="220" height="220" aria-label="QR code for saving this character pass"></canvas><strong>SCAN TO MAKE<br>THIS YOUR DEFAULT</strong></div>
       </div>
-      <div class="result-actions"><a id="savePass" class="primary-button" href="#" target="_blank">Use on this device <span>→</span></a><a id="downloadCharacter" class="secondary-button" href="#" download="pixel-dungeon-character.png">Save PNG</a><button id="makeAnother" class="secondary-button" type="button">Make another</button></div>
+      <div class="result-actions"><a id="savePass" class="primary-button" href="#" target="_blank">Use on this device <span>→</span></a><a id="downloadCharacter" class="secondary-button" href="#" download="pixel-dungeon-character.png">Save walk PNG</a><a id="downloadWave" class="secondary-button" href="#" download="pixel-dungeon-wave.png" hidden>Save wave PNG</a><button id="makeAnother" class="secondary-button" type="button">Make another</button></div>
     </section>
   </main>
-  <script type="module" src="booth.mjs?v=portrait-1"></script>
+  <script type="module" src="booth.mjs?v=wave-1"></script>
 </body>
 </html>

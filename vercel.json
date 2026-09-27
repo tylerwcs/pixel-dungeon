@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "dist",
   "functions": {
+    "api/characters/generate.mjs": {
+      "maxDuration": 300
+    },
     "api/**/*.mjs": {
       "maxDuration": 60
     }
@@ -10,8 +13,14 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
       ]
     }
   ]

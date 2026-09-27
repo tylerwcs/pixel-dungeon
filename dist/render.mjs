@@ -2,6 +2,16 @@ import {MAP,WIDTH,HEIGHT,COLORS,DIRS,position} from './engine.mjs';
 export const cache=new Map();
 const frameCache=new Map();
 export function loadImage(src){if(cache.has(src))return Promise.resolve(cache.get(src));return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{cache.set(src,img);resolve(img);};img.onerror=()=>reject(new Error('This PNG could not be opened.'));img.src=src;});}
+export function characterAsset(character){return {...character,src:character.imageUrl,...(character.wave?{wave:{...character.wave,src:character.wave.imageUrl,anchor:'cell'}}:{})};}
+export async function loadCharacterAsset(character){const asset=characterAsset(character);await loadImage(asset.src);if(asset.wave)await loadImage(asset.wave.src).catch(()=>{});return asset;}
+// Return to neutral between greetings. Old characters and failed wave loads stay still.
+const waveSequence=[0,1,2,3,2,3,2,1,0,0,0,0,0,0,0,0,0,0];
+const greetingMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+export function waveFrame(time,fps=6){return waveSequence[Math.floor(Math.max(0,time)*fps)%waveSequence.length];}
+export function drawGreeting(ctx,asset,x,y,size,time=0){
+  if(asset.wave&&cache.has(asset.wave.src)){const wave=asset.wave;drawSprite(ctx,wave,x,y,size,(greetingMotion?.matches?1:waveFrame(time,wave.fps))/wave.fps);}
+  else drawSprite(ctx,asset,x,y,size,0,'down',false);
+}
 export const defaults={collector:{src:'assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon adventurer'},pursuer:{src:'assets/monster.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon monster'}};
 // Player 1 defaults to the adventurer and everyone else to the monster; a booth character replaces either.
 export function identityAsset(players,index){return players[index].booth||defaults[index===0?'collector':'pursuer'];}
@@ -26,7 +36,8 @@ export function detectSpriteFrames(alpha,width,height,cols=4,rows=4,threshold=24
 }
 
 function frameAtlas(img,asset){
-  if(asset.layout!=='directional')return null;const key=`${asset.src}|${asset.cols}x${asset.rows}`;if(frameCache.has(key))return frameCache.get(key);
+  // Waving changes the silhouette width; a cell anchor keeps the torso from sliding.
+  if(asset.layout!=='directional'||asset.anchor==='cell')return null;const key=`${asset.src}|${asset.cols}x${asset.rows}`;if(frameCache.has(key))return frameCache.get(key);
   let atlas=null;try{const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;const context=canvas.getContext('2d',{willReadFrequently:true});context.drawImage(img,0,0);const rgba=context.getImageData(0,0,img.width,img.height).data,alpha=new Uint8Array(img.width*img.height);for(let source=3,target=0;source<rgba.length;source+=4,target+=1)alpha[target]=rgba[source];atlas=detectSpriteFrames(alpha,img.width,img.height,asset.cols,asset.rows);}catch{}
   frameCache.set(key,atlas);return atlas;
 }

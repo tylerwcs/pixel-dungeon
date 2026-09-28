@@ -1,5 +1,5 @@
 import {loadCharacterAsset,cache} from './render.mjs?v=wave-1';
-import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=position-1';
+import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=position-2';
 
 export async function mountCharacterView(container,character){
   const asset=await loadCharacterAsset(character),urls=[],cards=[];let frameId,exporting=false,disposed=false,frame=null;
@@ -46,7 +46,7 @@ export async function mountCharacterView(container,character){
   const reduced=matchMedia('(prefers-reduced-motion: reduce)'),start=performance.now();
   function render(now){
     const time=(now-start)/1000;
-    for(const {canvas,animation}of cards){const ctx=canvas.getContext('2d');drawVideoBackground(ctx,360,640,character.name,frame?'framed':'black',frame);drawVideoCharacter(ctx,asset,animation,360,640,time,reduced.matches);}
+    for(const {canvas,animation}of cards){const ctx=canvas.getContext('2d');drawVideoBackground(ctx,360,640,character.name,frame?'framed':'black',frame);drawVideoCharacter(ctx,asset,animation,360,640,time,reduced.matches,frame?'framed':'black');}
     frameId=requestAnimationFrame(render);
   }
   frameId=requestAnimationFrame(render);

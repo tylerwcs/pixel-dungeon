@@ -15,7 +15,7 @@ function footAnchor(source,time=0,direction='down'){
   footAnchors.set(key,anchor);return anchor;
 }
 export function loadSocialFrame(){
-  if(!frameImage)frameImage=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>{frameImage=null;reject(new Error('The event frame could not load. Try again.'));};image.src=new URL('./assets/social-frame-v1.png',import.meta.url).href;});
+  if(!frameImage)frameImage=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>{frameImage=null;reject(new Error('The event frame could not load. Try again.'));};image.src=new URL('./assets/social-frame-v2.png',import.meta.url).href;});
   return frameImage;
 }
 export function drawVideoBackground(ctx,width,height,name,background,frame){
@@ -27,7 +27,7 @@ export function drawVideoBackground(ctx,width,height,name,background,frame){
   do{ctx.font=`600 ${fontSize}px Georgia, serif`;if(ctx.measureText(label).width<=width*.78)break;fontSize-=1;}while(fontSize>width*.022);
   ctx.shadowColor='#02051a';ctx.shadowBlur=width*.012;ctx.fillText(label,width/2,height*.115,width*.78);ctx.restore();
 }
-export function drawVideoCharacter(ctx,asset,animation,width,height,time=0,still=false){
+export function drawVideoCharacter(ctx,asset,animation,width,height,time=0,still=false,background='framed'){
   const source=animation==='wave'&&asset.wave&&cache.has(asset.wave.src)?asset.wave:asset;
   const pose=animation==='wave'?(still?0:waveFrame(time,source.fps))/source.fps:(still?0:time);
   const direction=animation==='wave'||still?'down':['down','left','right','up'][Math.floor(time/1.5)%4];
@@ -35,7 +35,7 @@ export function drawVideoCharacter(ctx,asset,animation,width,height,time=0,still
   // A fixed neutral anchor keeps waving arms from moving the body sideways.
   // Walking poses are measured separately because the renderer crops each pose.
   const size=width*.95,anchor=animation==='wave'?footAnchor(source):footAnchor(source,pose,direction);
-  drawSprite(ctx,source,width/2-anchor.x*size,height*.67-anchor.y*size,size,pose,direction,true);
+  drawSprite(ctx,source,width/2-anchor.x*size,height*(background==='framed'?.745:.67)-anchor.y*size,size,pose,direction,true);
 }
 export async function createAnimationVideo(asset,animation,onProgress=()=>{},{name='',background='framed'}={}){
   const source=animation==='wave'?asset.wave:asset;if(!source||!cache.has(source.src))throw new Error('This animation is not available yet.');
@@ -51,7 +51,7 @@ export async function createAnimationVideo(asset,animation,onProgress=()=>{},{na
     worker.onmessage=({data})=>{
       if(data.error)finish(new Error(data.error));else if(data.bytes)finish(null,data.bytes);
       else if(Number.isInteger(data.frame)){
-        try{ctx.drawImage(base,0,0);drawVideoCharacter(ctx,asset,animation,width,height,data.frame/24);const rgba=ctx.getImageData(0,0,width,height).data;worker.postMessage({rgba},[rgba.buffer]);onProgress(Math.round(data.frame/144*100));}catch{finish(new Error('The video could not be prepared. Please try again.'));}
+        try{ctx.drawImage(base,0,0);drawVideoCharacter(ctx,asset,animation,width,height,data.frame/24,false,background);const rgba=ctx.getImageData(0,0,width,height).data;worker.postMessage({rgba},[rgba.buffer]);onProgress(Math.round(data.frame/144*100));}catch{finish(new Error('The video could not be prepared. Please try again.'));}
       }
     };
     // Send one frame at a time, avoiding 16 full-HD buffers in phone memory.

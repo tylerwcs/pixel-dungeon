@@ -1,5 +1,5 @@
 import {readJob,savePass,stageLabels} from '../job-client.mjs?v=design-1';
-import {mountCharacterView} from '../character-view.mjs?v=position-1';
+import {mountCharacterView} from '../character-view.mjs?v=position-2';
 const $=id=>document.getElementById(id),id=new URLSearchParams(location.search).get('job'),token=new URLSearchParams(location.hash.slice(1)).get('access');
 let readyCharacter=null,polling=false,done=false,timer;
 async function refresh(){

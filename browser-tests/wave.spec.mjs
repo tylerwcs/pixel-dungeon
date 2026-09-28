@@ -59,11 +59,10 @@ test('crew can accept two photos while attendees follow progress and collect MP4
   await phone.close();await game.close();
 });
 
-test('live camera capture immediately accepts a job and releases the booth',async({page,context})=>{
-  const backend=await mockBooth(context,{hold:true});await page.goto('/booth/');
-  await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=async()=>{const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;canvas.getContext('2d').fillRect(0,0,640,480);return canvas.captureStream(5);};});
-  await page.locator('#characterName').fill('Camera guest');await page.locator('#startCamera').click();await expect.poll(()=>page.locator('#cameraPreview').evaluate(video=>video.videoWidth)).toBe(640);await page.locator('#capturePhoto').click();
-  await expect(page.locator('#ticketName')).toHaveText('Camera guest');await expect(page.locator('#forge')).toBeHidden();await expect(page.locator('#ticketCard')).toBeVisible();await page.locator('#nextCharacter').click();await expect(page.locator('#characterName')).toHaveValue('');await expect(page.locator('#startCamera')).toBeEnabled();await expect(page.locator('#activeCount')).toHaveText('1 generating');await backend.finish();
+test('live camera capture immediately accepts a job and releases the booth',async({page,context},testInfo)=>{
+  const backend=await mockBooth(context,{hold:true});await page.addInitScript(()=>{navigator.mediaDevices.getUserMedia=async()=>{window.cameraStarts=(window.cameraStarts||0)+1;const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;canvas.getContext('2d').fillRect(0,0,640,480);return canvas.captureStream(5);};});await page.setViewportSize({width:568,height:884});await page.goto('/booth/');
+  await expect(page.locator('#startCamera')).toHaveCount(0);await expect(page.locator('#forge')).not.toContainText('1 · PHOTO');await expect(page.locator('.name-field')).toContainText('Name your character');await expect.poll(()=>page.locator('#cameraPreview').evaluate(video=>video.videoWidth)).toBe(640);const stage=await page.locator('.booth-stage').boundingBox(),upload=await page.locator('.upload-icon').boundingBox();expect(stage.width/stage.height).toBeCloseTo(.75,2);expect(upload.x-stage.x).toBeLessThan(20);await testInfo.attach('portrait-booth',{body:await page.screenshot({fullPage:true}),contentType:'image/png'});await page.locator('#characterName').fill('Camera guest');await page.locator('#capturePhoto').click();
+  await expect(page.locator('#ticketName')).toHaveText('Camera guest');await expect(page.locator('#forge')).toBeHidden();await expect(page.locator('#ticketCard')).toBeVisible();await page.locator('#nextCharacter').click();await expect(page.locator('#characterName')).toHaveValue('');await expect.poll(()=>page.evaluate(()=>window.cameraStarts)).toBe(2);await expect(page.locator('#activeCount')).toHaveText('1 generating');await backend.finish();
 });
 
 test('scanner handles denied cameras and stops an opened camera on close',async({page,context})=>{

@@ -298,3 +298,6 @@ body,.lobby-dialog{background-color:#030719;background-image:linear-gradient(180
 .countdown-card .countdown-role{margin:0 0 18px;font:400 9px/1.6 var(--font-pixel);letter-spacing:1px;color:#c9c3da;text-transform:uppercase}
 .countdown-card .countdown-number{display:grid;place-items:center;width:64px;height:64px;margin:0 auto;border:2px solid #ffd46b;background:#0a102e;box-shadow:inset 0 0 0 3px #3b2c12,0 4px 0 #030719,0 0 18px #e8bd6955;font-size:28px;line-height:1;text-shadow:0 0 12px #e8bd69}
 .countdown-card p:last-child{margin:16px 0 0}
+.player-card .player-info .player-control{display:inline-block!important;margin-top:10px;padding:7px 14px;border:1px solid color-mix(in srgb,var(--player) 55%,transparent);border-radius:999px;font-size:clamp(11px,.95vw,15px)!important;line-height:1.4;letter-spacing:1.5px;color:#f4efff;background:#0006}
+.player-card.is-pinged,.hud-card.is-pinged{outline:3px solid var(--player);outline-offset:2px;box-shadow:0 0 34px color-mix(in srgb,var(--player) 70%,transparent)}
+.player-card.is-pinged .player-control{background:var(--player);color:#070914}

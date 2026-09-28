@@ -6,3 +6,6 @@ export function gamepadDirection(g){
   for(const [index,name]of [[12,'up'],[13,'down'],[14,'left'],[15,'right']])if(g.buttons?.[index]?.pressed)direction=name;
   return direction;
 }
+export function controlOrder(pads){return [...pads.map(g=>`pad:${g.index}`),'wasd','arrows'];}
+export function controlName(control){return control?.startsWith('pad:')?`PAD ${Number(control.slice(4))+1}`:{wasd:'WASD KEYS',arrows:'ARROW KEYS'}[control]||'';}
+export function padPressed(g){return !!gamepadDirection(g)||!!g.buttons?.some(button=>button.pressed);}

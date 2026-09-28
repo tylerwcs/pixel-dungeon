@@ -1,5 +1,19 @@
 import {drawSprite,cache,waveFrame} from './render.mjs?v=wave-1';
 let frameImage;
+const footAnchors=new Map();
+function footAnchor(source,time=0,direction='down'){
+  const col=Math.floor(time*source.fps)%source.cols;
+  const image=cache.get(source.src),key=`${source.src}|${source.cols}|${source.rows}|${source.anchor||''}|${direction}|${col}`;
+  const saved=footAnchors.get(key);if(saved&&saved.image===image)return saved;
+  const size=512,canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});drawSprite(ctx,source,size/2,size/2,size,time,direction,true);
+  const pixels=ctx.getImageData(0,0,size,size).data;let top=size,bottom=-1,left=size,right=-1;
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(pixels[(y*size+x)*4+3]>24){top=Math.min(top,y);bottom=y;}
+  // Find the shoes, excluding the bag and waving hand from horizontal alignment.
+  for(let y=Math.max(top,Math.floor(bottom-(bottom-top)*.1));y<=bottom;y++)for(let x=0;x<size;x++)if(pixels[(y*size+x)*4+3]>24){left=Math.min(left,x);right=Math.max(right,x);}
+  const anchor={image,x:bottom<0?0:((left+right+1)/2-size/2)/size,y:bottom<0?.42:(bottom+1-size/2)/size};
+  footAnchors.set(key,anchor);return anchor;
+}
 export function loadSocialFrame(){
   if(!frameImage)frameImage=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>{frameImage=null;reject(new Error('The event frame could not load. Try again.'));};image.src=new URL('./assets/social-frame-v1.png',import.meta.url).href;});
   return frameImage;
@@ -14,11 +28,14 @@ export function drawVideoBackground(ctx,width,height,name,background,frame){
   ctx.shadowColor='#02051a';ctx.shadowBlur=width*.012;ctx.fillText(label,width/2,height*.115,width*.78);ctx.restore();
 }
 export function drawVideoCharacter(ctx,asset,animation,width,height,time=0,still=false){
-  const source=animation==='wave'?(asset.wave||asset):asset;
+  const source=animation==='wave'&&asset.wave&&cache.has(asset.wave.src)?asset.wave:asset;
   const pose=animation==='wave'?(still?0:waveFrame(time,source.fps))/source.fps:(still?0:time);
   const direction=animation==='wave'||still?'down':['down','left','right','up'][Math.floor(time/1.5)%4];
-  // Same placement in the preview and export; leave the lower event masthead clear.
-  drawSprite(ctx,source,width/2,height*.47,width*.95,pose,direction,true);
+  // Anchor visible shoes to the platform, not the transparent sprite-cell centre.
+  // A fixed neutral anchor keeps waving arms from moving the body sideways.
+  // Walking poses are measured separately because the renderer crops each pose.
+  const size=width*.95,anchor=animation==='wave'?footAnchor(source):footAnchor(source,pose,direction);
+  drawSprite(ctx,source,width/2-anchor.x*size,height*.67-anchor.y*size,size,pose,direction,true);
 }
 export async function createAnimationVideo(asset,animation,onProgress=()=>{},{name='',background='framed'}={}){
   const source=animation==='wave'?asset.wave:asset;if(!source||!cache.has(source.src))throw new Error('This animation is not available yet.');

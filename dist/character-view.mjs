@@ -1,5 +1,5 @@
 import {loadCharacterAsset,cache} from './render.mjs?v=wave-1';
-import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=share-1';
+import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=position-1';
 
 export async function mountCharacterView(container,character){
   const asset=await loadCharacterAsset(character),urls=[],cards=[];let frameId,exporting=false,disposed=false,frame=null;

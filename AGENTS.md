@@ -60,4 +60,4 @@ Hosts for that API:
 
 ## Product boundaries
 
-Desktop keyboard/gamepad play on one shared screen, one maze, four rounds with a rotating collector. Phones join lobby slots, ready up, and may act as the paired photo-booth camera; they do not control characters. Out of scope: online play, game touch controls, GIF import, power-ups, round timer.
+Desktop keyboard/gamepad play on one shared screen, one maze, four rounds with a rotating collector. Phones join lobby slots, ready up, and may act as the paired photo-booth camera; they do not control characters. Players can dash (collector every 8 s, each pursuer once per round). Out of scope: online play, game touch controls, GIF import, other power-ups, round timer.

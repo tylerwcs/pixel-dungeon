@@ -1,5 +1,5 @@
 import {readPass,savePass} from '../job-client.mjs?v=design-1';
-import {mountCharacterView} from '../character-view.mjs?v=queue-1';
+import {mountCharacterView} from '../character-view.mjs?v=share-1';
 const $=id=>document.getElementById(id),id=new URLSearchParams(location.search).get('character'),token=new URLSearchParams(location.hash.slice(1)).get('claim');
 async function openPass(){
   try{

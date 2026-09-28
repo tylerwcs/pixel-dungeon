@@ -1,34 +1,55 @@
-import {loadCharacterAsset,drawGreeting,drawSprite,cache} from './render.mjs?v=wave-1';
-import {createAnimationVideo} from './animation-export.mjs?v=queue-1';
+import {loadCharacterAsset,cache} from './render.mjs?v=wave-1';
+import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=share-1';
 
 export async function mountCharacterView(container,character){
-  const asset=await loadCharacterAsset(character),urls=[];let frameId,exporting=false;
+  const asset=await loadCharacterAsset(character),urls=[],cards=[];let frameId,exporting=false,disposed=false,frame=null;
   container.replaceChildren();
-  const cards=[];
+  // A failed decorative asset must not block joining or the plain video option.
+  loadSocialFrame().then(image=>{frame=image;}).catch(()=>{});
+  const supportsShare=()=>typeof navigator.share==='function'&&typeof navigator.canShare==='function';
   for(const animation of ['wave','walk']){
-    const card=document.createElement('article');card.className='animation-card';
-    const title=document.createElement('h3');title.textContent=animation==='wave'?'Hello, you!':'Ready to explore';
-    const canvas=document.createElement('canvas');canvas.width=320;canvas.height=320;canvas.dataset.animation=animation;canvas.setAttribute('aria-label',`${character.name} ${animation==='wave'?'waving':'walking'}`);
-    const button=document.createElement('button');button.type='button';button.className='download-button';button.textContent=`↓ Download ${animation} MP4`;
-    const save=document.createElement('a');save.className='download-button';save.hidden=true;save.textContent=`↓ Save ${animation} MP4`;
-    const share=document.createElement('button');share.type='button';share.className='download-button';share.textContent='Share video';share.hidden=true;
+    const card=document.createElement('article');card.className='animation-card';card.dataset.animation=animation;
+    const title=document.createElement('h3');title.textContent=animation==='wave'?'Hello!':'Ready to explore';
+    const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;canvas.dataset.animation=animation;canvas.setAttribute('aria-label',`${character.name} ${animation==='wave'?'waving':'walking'} in the event frame`);
     const status=document.createElement('p');status.className='download-status';status.setAttribute('role','status');
-    card.append(title,canvas,button,save,share,status);container.append(card);cards.push({canvas,animation,button});
-    if(animation==='wave'&&(!asset.wave||!cache.has(asset.wave.src))){button.disabled=true;status.textContent='A wave is not available for this character.';}
-    button.onclick=async()=>{
-      if(exporting)return;exporting=true;cards.forEach(item=>item.button.disabled=true);status.textContent='Preparing your video…';
-      try{
-        const blob=await createAnimationVideo(asset,animation,progress=>status.textContent=`Preparing video · ${progress}%`),name=`${character.name.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'character'}-${animation}.mp4`,url=URL.createObjectURL(blob);urls.push(url);save.href=url;save.download=name;save.hidden=false;button.hidden=true;
-        const file=new File([blob],name,{type:'video/mp4'});if(navigator.canShare?.({files:[file]})){share.hidden=false;share.onclick=async()=>{try{await navigator.share({files:[file]});}catch(error){if(error.name!=='AbortError')status.textContent='Sharing is unavailable. Use Save MP4 instead.';}};}
-        status.textContent='Video ready. Tap Save MP4 to keep it.';
-      }catch(error){status.textContent=error.message;}
-      finally{exporting=false;cards.forEach(item=>item.button.disabled=item.animation==='wave'&&(!asset.wave||!cache.has(asset.wave.src)));}
-    };
+    const actions=document.createElement('div');actions.className='video-actions';
+    const item={canvas,animation,buttons:[],files:new Map(),available:animation!=='wave'||!!(asset.wave&&cache.has(asset.wave.src))};cards.push(item);
+    for(const background of ['framed','black']){
+      const button=document.createElement('button');button.type='button';button.className=`download-button ${background==='framed'?'share-primary':'share-secondary'}`;button.dataset.background=background;
+      const label=()=>`${supportsShare()?'Share':'Download'} ${background==='framed'?'with event frame':'on black'}`;
+      button.textContent=label();button.disabled=!item.available;item.buttons.push(button);actions.append(button);
+      button.onclick=async()=>{
+        if(exporting||disposed)return;exporting=true;cards.forEach(c=>c.buttons.forEach(b=>b.disabled=true));
+        try{
+          let file=item.files.get(background);
+          if(!file){
+            button.textContent='Preparing…';status.textContent='Preparing your video…';
+            const blob=await createAnimationVideo(asset,animation,progress=>{if(!disposed){button.textContent=`Preparing ${progress}%`;status.textContent=`Preparing your video · ${progress}%`;}},{name:character.name,background});
+            if(disposed)return;
+            const filename=`${character.name.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'character'}-${animation}-${background}.mp4`;
+            file=new File([blob],filename,{type:'video/mp4'});item.files.set(background,file);
+          }
+          if(supportsShare()&&navigator.canShare({files:[file]})){
+            // Preparation can outlast the browser's user gesture. A second tap uses the cached File immediately.
+            if(navigator.userActivation&&!navigator.userActivation.isActive){status.textContent=`Ready. Tap “${label()}” to share your video.`;return;}
+            await navigator.share({files:[file],title:`${character.name} · Ecopialand`});status.textContent='Your video is ready to share again.';
+          }else{
+            const link=document.createElement('a'),url=URL.createObjectURL(file);urls.push(url);link.href=url;link.download=file.name;document.body.append(link);link.click();link.remove();status.textContent='Your video has been downloaded.';
+          }
+        }catch(error){status.textContent=error.name==='AbortError'?'Ready whenever you want to share.':error.name==='NotAllowedError'?`Tap “${label()}” again to open sharing.`:error.message||'Sharing did not open. Please try again.';}
+        finally{exporting=false;button.textContent=label();cards.forEach(c=>c.buttons.forEach(b=>b.disabled=!c.available));}
+      };
+    }
+    if(!item.available)status.textContent='A wave is not available for this character.';
+    card.append(title,canvas,actions,status);container.append(card);
   }
   const reduced=matchMedia('(prefers-reduced-motion: reduce)'),start=performance.now();
-  function render(now){const time=(now-start)/1000;for(const {canvas,animation}of cards){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,320,320);if(animation==='wave')drawGreeting(ctx,asset,160,160,300,time);else drawSprite(ctx,asset,160,160,300,reduced.matches?0:time,['down','left','right','up'][Math.floor(time/1.5)%4],!reduced.matches);}frameId=requestAnimationFrame(render);}
+  function render(now){
+    const time=(now-start)/1000;
+    for(const {canvas,animation}of cards){const ctx=canvas.getContext('2d');drawVideoBackground(ctx,360,640,character.name,frame?'framed':'black',frame);drawVideoCharacter(ctx,asset,animation,360,640,time,reduced.matches);}
+    frameId=requestAnimationFrame(render);
+  }
   frameId=requestAnimationFrame(render);
-  const cleanup=()=>{cancelAnimationFrame(frameId);urls.forEach(url=>URL.revokeObjectURL(url));};window.addEventListener('pagehide',cleanup,{once:true});return cleanup;
+  const cleanup=()=>{disposed=true;cancelAnimationFrame(frameId);urls.forEach(url=>URL.revokeObjectURL(url));cards.forEach(card=>card.files.clear());};window.addEventListener('pagehide',cleanup,{once:true});return cleanup;
 }
-
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});

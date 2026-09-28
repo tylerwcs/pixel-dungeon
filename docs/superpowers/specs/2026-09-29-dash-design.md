@@ -24,8 +24,9 @@ Give players one button-triggered ability — a short speed burst — that uses 
 ## Controls
 
 - Gamepad: any face button, indices 0–3. These pads report no standard mapping, so "A" cannot be identified reliably. Any face button avoids guessing and is easy to explain.
-- Keyboard: `Q` for the WASD player; `/` or `Right Shift` for the arrow-keys player.
+- Keyboard: `Q` for the WASD player; `/` for the arrow-keys player.
 - A held button triggers one dash. It must be released and pressed again to request another dash (edge-triggered), so a held button doesn't re-fire the moment the collector's cooldown ends.
+- Right Shift was dropped: pressing Shift five times opens the Windows Sticky Keys prompt, which would pause a live round.
 
 ## AI
 
@@ -65,7 +66,7 @@ In `step`, while `playing` and before movement:
 - Player panel: a new dash line in each in-game HUD card, below the name and role:
   - Collector: `⚡ DASH` when ready, a filling bar while recharging, a glow while dashing.
   - Pursuer: `⚡ DASH ×1`, then `USED`.
-- Maze: a dashing character gets a short fading trail of its earlier positions in the player's colour, drawn by `app.mjs` right after the renderer (so `render.mjs` and its tagged importers don't change). The two most recent positions are skipped so the trail doesn't cover the sprite. Sprite and collision sizes are unchanged.
+- Maze: a dashing character gets a short fading trail of its earlier positions in the player's colour, drawn by `app.mjs` right after the renderer (so `render.mjs` and its tagged importers don't change). The six most recent positions are skipped so the trail doesn't cover the sprite. Sprite and collision sizes are unchanged.
 - Sound: a short rising blip on `'dash'`, respecting mute.
 - Help dialog: one line on the dash and its keys.
 

@@ -13,8 +13,8 @@ export function roundRows(state,names,totals){
     return {index,name,action,earned:earned[index],total:totals[index],collector};
   });
 }
-export function dashStatus(a){
-  if(a.dashTime>0)return {text:'⚡ DASHING',charge:1,dashing:true,spent:false};
+export function dashStatus(a,phase='playing'){
+  if(a.dashTime>0&&phase!=='result')return {text:'⚡ DASHING',charge:1,dashing:true,spent:false};
   if(a.collector)return a.dashCooldown>0?{text:`⚡ ${Math.ceil(a.dashCooldown)}s`,charge:1-a.dashCooldown/DASH_COOLDOWN,dashing:false,spent:false}:{text:'⚡ DASH',charge:1,dashing:false,spent:false};
   return a.dashesLeft>0?{text:'⚡ DASH ×1',charge:1,dashing:false,spent:false}:{text:'DASH USED',charge:0,dashing:false,spent:true};
 }

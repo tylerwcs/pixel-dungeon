@@ -3,7 +3,7 @@ import './tests/booth-sessions.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {MAP,open,distanceField,newRound,step,position,sweptContact,nextCollector,aiDirection,DIRS,key,roundScores,rankScores,CATCH_BONUS,GAME_ROUNDS} from './dist/engine.mjs';
+import {MAP,open,distanceField,newRound,step,position,sweptContact,nextCollector,aiDirection,DIRS,key,roundScores,rankScores,CATCH_BONUS,GAME_ROUNDS,dashReady,DASH_TIME,DASH_COOLDOWN,neighbors,WIDTH,HEIGHT} from './dist/engine.mjs';
 import {connectedPads,controlsAvailable,gamepadDirection,controlOrder,controlName,padPressed} from './dist/input.mjs';
 import {detectSpriteFrames,identityAsset,defaults,cache,characterAsset,drawGreeting,drawSprite,waveFrame} from './dist/render.mjs';
 import {buildCharacterPortraitPrompt,buildCharacterPrompt,buildWavePrompt,createCharacterStorage,generationRateLimit,handleCharacterApi,resetGenerationRateLimits,sanitizeCharacterName,validatePhoto} from './worker/character-api.mjs';
@@ -74,6 +74,44 @@ test('AI paths stay on the maze and a stationary collector is caught',()=>{const
 test('custom art does not change gameplay or collision geometry',()=>{const p=party();p[0].booth={src:'arbitrary.png',cols:32,rows:4,fps:24,layout:'directional'};const s=newRound(p),plain=newRound(party());assert.deepEqual(s.actors,plain.actors);});
 test('mixed keyboard/gamepad controls need all assigned devices connected',()=>{const p=[{control:'wasd'},{control:'arrows'},{control:'pad:0'},{control:'pad:2'}],pads=[{index:0,connected:true},null,{index:2,connected:true}];assert.ok(controlsAvailable(p,connectedPads(pads)));pads[2].connected=false;assert.ok(!controlsAvailable(p,connectedPads(pads)));pads[2].connected=true;assert.ok(controlsAvailable(p,connectedPads(pads)));assert.ok(!controlsAvailable(Array(4).fill({control:'ai'}),[]));});
 test('gamepad deadzone, dominant stick axis, and D-pad override',()=>{assert.equal(gamepadDirection({axes:[.2,-.2]}),null);assert.equal(gamepadDirection({axes:[-.9,.2]}),'left');assert.equal(gamepadDirection({axes:[.2,.8]}),'down');assert.equal(gamepadDirection({axes:[.8,0],buttons:Array.from({length:16},(_,i)=>({pressed:i===12}))}),'up');});
+const dashParty=()=>[{control:'wasd'},{control:'arrows'},{control:'pad:0'},{control:'pad:1'}];
+const playing=(players=dashParty(),collector=0)=>{const s=newRound(players,collector);s.phase='playing';s.countdown=0;return s;};
+const openDirection=a=>Object.keys(DIRS).find(name=>open(a.x+DIRS[name].x,a.y+DIRS[name].y));
+test('a dash moves an actor 1.6 times as far per step',()=>{
+  const plain=playing(),dashing=playing();
+  for(const s of [plain,dashing])s.actors[0].queued=openDirection(s.actors[0]);
+  dashing.actors[0].dashRequested=true;
+  step(plain,1/60);const events=step(dashing,1/60);
+  assert.ok(events.includes('dash'));
+  assert.ok(Math.abs(dashing.actors[0].progress/plain.actors[0].progress-1.6)<1e-9);
+});
+test('the collector can dash again 8 seconds after a dash ends',()=>{
+  const s=playing(),dashes=[];
+  for(let i=0;i<1200;i++){s.actors[0].dashRequested=true;if(step(s,1/60).includes('dash'))dashes.push(i);}
+  assert.equal(dashes[0],0);
+  assert.equal(dashes[1]-dashes[0],Math.round((DASH_TIME+DASH_COOLDOWN)*60));
+});
+test('each pursuer dashes once per round and dash state resets every round',()=>{
+  const players=dashParty(),s=playing(players);
+  s.actors[1].dashRequested=true;assert.ok(step(s,1/60).includes('dash'));assert.equal(s.actors[1].dashesLeft,0);
+  for(let i=0;i<200;i++)step(s,1/60);
+  s.actors[1].dashRequested=true;assert.ok(!step(s,1/60).includes('dash'));assert.equal(dashReady(s.actors[1]),false);
+  const next=newRound(players,1,2);
+  assert.equal(next.actors[0].dashesLeft,1);assert.equal(next.actors[1].dashesLeft,null);
+  assert.ok(next.actors.every(a=>a.dashTime===0&&a.dashCooldown===0&&dashReady(a)));
+});
+test('dash requests during the countdown are dropped',()=>{
+  const s=newRound(dashParty());s.actors[0].dashRequested=true;
+  step(s,1/60);assert.equal(s.actors[0].dashTime,0);assert.equal(s.actors[0].dashRequested,false);
+  s.phase='playing';s.countdown=0;assert.ok(!step(s,1/60).includes('dash'));
+});
+test('a dashing pursuer still catches the collector',()=>{
+  const s=playing(),c=s.actors[0],p=s.actors[1],field=distanceField(c.x,c.y);
+  let start=null;for(let y=0;y<HEIGHT&&!start;y++)for(let x=0;x<WIDTH;x++)if(field.get(key(x,y))===3){start={x,y};break;}
+  Object.assign(p,start,{target:null,progress:0,dir:null});p.dashRequested=true;
+  for(let i=0;i<60&&s.phase==='playing';i++){if(!p.target)p.queued=neighbors(p.x,p.y).sort((a,b)=>field.get(key(a.x,a.y))-field.get(key(b.x,b.y)))[0].name;step(s,1/60);}
+  assert.equal(s.phase,'result');assert.deepEqual(s.catchers,[1]);
+});
 test('gamepads are offered before keyboards and every control has a visible name',()=>{assert.deepEqual(controlOrder([{index:0},{index:3}]),['pad:0','pad:3','wasd','arrows']);assert.deepEqual(controlOrder([]),['wasd','arrows']);assert.equal(controlName('pad:0'),'PAD 1');assert.equal(controlName('pad:3'),'PAD 4');assert.equal(controlName('wasd'),'WASD KEYS');assert.equal(controlName('arrows'),'ARROW KEYS');assert.equal(controlName('ai'),'');});
 test('any gamepad button or direction identifies the pad, including axis-only D-pads',()=>{const idle={axes:[0,0],buttons:Array.from({length:10},()=>({pressed:false}))};assert.equal(padPressed(idle),false);assert.equal(padPressed({...idle,axes:[0,-1]}),true);assert.equal(padPressed({...idle,buttons:idle.buttons.map((button,i)=>({pressed:i===1}))}),true);});
 test('portrait prompts separate attendee identity from style and sheets preserve the finished design',()=>{const portrait=buildCharacterPortraitPrompt(),walk=buildCharacterPrompt();assert.match(portrait,/IMAGE 1 is the attendee photo/);assert.match(portrait,/IMAGE 2 is the approved STYLE A drawing/);assert.match(portrait,/not the reference person's clothing or identity/);for(const prompt of [walk,buildWavePrompt()]){assert.match(prompt,/FINISHED APPROVED CHARACTER DESIGN/);assert.match(prompt,/2048 by 2048/);assert.match(prompt,/4 columns by 4 rows/);assert.match(prompt,/local x=256/);assert.match(prompt,/local y=464/);assert.match(prompt,/Row 1 faces DOWN/);assert.match(prompt,/transparent/);}});

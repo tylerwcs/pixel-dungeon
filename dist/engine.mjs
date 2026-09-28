@@ -2,6 +2,9 @@ export const DIRS = {up:{x:0,y:-1,row:3},down:{x:0,y:1,row:0},left:{x:-1,y:0,row
 export const COLORS = ['#bade80','#b8a2ee','#f59b83','#88cddd'];
 export const WIDTH=25, HEIGHT=21;
 export const GAME_ROUNDS=4, CATCH_BONUS=15;
+export const DASH_BOOST=1.6, DASH_TIME=1.5, DASH_COOLDOWN=8;
+export function dashReady(a){return a.dashTime<=0&&(a.collector?a.dashCooldown<=0:a.dashesLeft>0);}
+const tick=(value,dt)=>value-dt<1e-9?0:value-dt;
 // Hand-shaped connected corridor network. Every loop joins the outer circuit.
 export function makeMap(){
   const map=Array.from({length:HEIGHT},()=>Array(WIDTH).fill('#'));
@@ -26,7 +29,7 @@ export function distanceField(tx,ty){
 const SPAWNS=[{x:1,y:1},{x:23,y:1},{x:1,y:19},{x:23,y:19}];
 export function newRound(players,collector=0,round=1){
   const collectorIndex=Number.isInteger(collector)&&collector>=0&&collector<players.length?collector:0;
-  const actors=players.map((p,i)=>{const isCollector=i===collectorIndex;return {id:i,human:p.control!=='ai',control:p.control,collector:isCollector,...SPAWNS[i],dir:null,facing:i<2?'down':'up',queued:null,target:null,progress:0,speed:isCollector?4.5:3.8,aiKind:i};});
+  const actors=players.map((p,i)=>{const isCollector=i===collectorIndex;return {id:i,human:p.control!=='ai',control:p.control,collector:isCollector,...SPAWNS[i],dir:null,facing:i<2?'down':'up',queued:null,target:null,progress:0,speed:isCollector?4.5:3.8,aiKind:i,dashTime:0,dashCooldown:0,dashesLeft:isCollector?null:1,dashRequested:false};});
   const coins=new Set();for(let y=0;y<HEIGHT;y++)for(let x=0;x<WIDTH;x++)if(open(x,y))coins.add(key(x,y));
   const c=actors[collectorIndex];coins.delete(key(c.x,c.y));
   return {actors,collector:collectorIndex,coins,total:coins.size,phase:'countdown',countdown:5,elapsed:0,round,winner:null,collected:0,catchers:[]};
@@ -50,7 +53,7 @@ export function aiDirection(a,state){
   const dist=distanceField(tx,ty),opts=neighbors(a.x,a.y);opts.sort((b,c)=>(dist.get(key(b.x,b.y))??Infinity)-(dist.get(key(c.x,c.y))??Infinity));return opts[0]?.name;
 }
 function move(a,dt,state){
-  let remaining=a.speed*dt;
+  let remaining=a.speed*(a.dashTime>0?DASH_BOOST:1)*dt;
   while(remaining>0){
     if(!a.target){
       if(!a.human)a.queued=aiDirection(a,state);
@@ -63,14 +66,16 @@ function move(a,dt,state){
   }
 }
 export function step(state,dt){
-  if(state.phase==='countdown'){state.countdown=Math.max(0,state.countdown-dt);if(state.countdown===0)state.phase='playing';return [];}
+  if(state.phase==='countdown'){for(const a of state.actors)a.dashRequested=false;state.countdown=Math.max(0,state.countdown-dt);if(state.countdown===0)state.phase='playing';return [];}
   if(state.phase!=='playing')return [];
-  state.elapsed+=dt;const prev=state.actors.map(position);
+  state.elapsed+=dt;const prev=state.actors.map(position),events=[];
+  for(const a of state.actors){if(a.dashRequested&&dashReady(a)){a.dashTime=DASH_TIME;if(!a.collector)a.dashesLeft--;events.push('dash');}a.dashRequested=false;}
   for(const a of state.actors)move(a,dt,state);
+  for(const a of state.actors){if(a.dashTime>0){a.dashTime=tick(a.dashTime,dt);if(a.dashTime===0&&a.collector)a.dashCooldown=DASH_COOLDOWN;}else if(a.dashCooldown>0)a.dashCooldown=tick(a.dashCooldown,dt);}
   const c=state.actors[state.collector],cp=position(c);
   const catchers=state.actors.filter((a,i)=>!a.collector&&sweptContact(prev[state.collector],cp,prev[i],position(a))).map(a=>a.id);
-  if(catchers.length){state.catchers=catchers;state.phase='result';state.winner='pursuers';return ['caught'];}
-  const x=Math.round(cp.x),y=Math.round(cp.y);const events=[];
+  if(catchers.length){state.catchers=catchers;state.phase='result';state.winner='pursuers';return [...events,'caught'];}
+  const x=Math.round(cp.x),y=Math.round(cp.y);
   if(Math.abs(cp.x-x)<.22&&Math.abs(cp.y-y)<.22&&state.coins.delete(key(x,y))){state.collected++;events.push('coin');}
   if(state.coins.size===0){state.phase='result';state.winner='collector';events.push('win');}return events;
 }

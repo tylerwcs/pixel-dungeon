@@ -4,6 +4,16 @@ export const WIDTH=25, HEIGHT=21;
 export const GAME_ROUNDS=4, CATCH_BONUS=15;
 export const DASH_BOOST=1.6, DASH_TIME=1.5, DASH_COOLDOWN=8;
 export function dashReady(a){return a.dashTime<=0&&(a.collector?a.dashCooldown<=0:a.dashesLeft>0);}
+function clearLine(from,to,max){
+  const ax=Math.round(from.x),ay=Math.round(from.y),bx=Math.round(to.x),by=Math.round(to.y);
+  if(ax!==bx&&ay!==by)return false;const distance=Math.abs(ax-bx)+Math.abs(ay-by);if(distance>max)return false;
+  const sx=Math.sign(bx-ax),sy=Math.sign(by-ay);for(let i=1;i<distance;i++)if(!open(ax+sx*i,ay+sy*i))return false;return true;
+}
+export function aiWantsDash(a,state){
+  if(!dashReady(a))return false;const cp=position(state.actors[state.collector]);
+  if(a.collector)return state.actors.some(o=>{if(o.collector)return false;const p=position(o);return Math.abs(Math.round(p.x)-Math.round(cp.x))+Math.abs(Math.round(p.y)-Math.round(cp.y))<=3;});
+  return clearLine(position(a),cp,5);
+}
 const tick=(value,dt)=>value-dt<1e-9?0:value-dt;
 // Hand-shaped connected corridor network. Every loop joins the outer circuit.
 export function makeMap(){
@@ -69,7 +79,7 @@ export function step(state,dt){
   if(state.phase==='countdown'){for(const a of state.actors)a.dashRequested=false;state.countdown=Math.max(0,state.countdown-dt);if(state.countdown===0)state.phase='playing';return [];}
   if(state.phase!=='playing')return [];
   state.elapsed+=dt;const prev=state.actors.map(position),events=[];
-  for(const a of state.actors){if(a.dashRequested&&dashReady(a)){a.dashTime=DASH_TIME;if(!a.collector)a.dashesLeft--;events.push('dash');}a.dashRequested=false;}
+  for(const a of state.actors){if(!a.human&&aiWantsDash(a,state))a.dashRequested=true;if(a.dashRequested&&dashReady(a)){a.dashTime=DASH_TIME;if(!a.collector)a.dashesLeft--;events.push('dash');}a.dashRequested=false;}
   for(const a of state.actors)move(a,dt,state);
   for(const a of state.actors){if(a.dashTime>0){a.dashTime=tick(a.dashTime,dt);if(a.dashTime===0&&a.collector)a.dashCooldown=DASH_COOLDOWN;}else if(a.dashCooldown>0)a.dashCooldown=tick(a.dashCooldown,dt);}
   const c=state.actors[state.collector],cp=position(c);

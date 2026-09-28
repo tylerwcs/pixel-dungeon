@@ -3,7 +3,7 @@ import './tests/booth-sessions.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {MAP,open,distanceField,newRound,step,position,sweptContact,nextCollector,aiDirection,DIRS,key,roundScores,rankScores,CATCH_BONUS,GAME_ROUNDS,dashReady,DASH_TIME,DASH_COOLDOWN,neighbors,WIDTH,HEIGHT} from './dist/engine.mjs';
+import {MAP,open,distanceField,newRound,step,position,sweptContact,nextCollector,aiDirection,DIRS,key,roundScores,rankScores,CATCH_BONUS,GAME_ROUNDS,dashReady,DASH_TIME,DASH_COOLDOWN,neighbors,WIDTH,HEIGHT,aiWantsDash} from './dist/engine.mjs';
 import {connectedPads,controlsAvailable,gamepadDirection,controlOrder,controlName,padPressed} from './dist/input.mjs';
 import {detectSpriteFrames,identityAsset,defaults,cache,characterAsset,drawGreeting,drawSprite,waveFrame} from './dist/render.mjs';
 import {buildCharacterPortraitPrompt,buildCharacterPrompt,buildWavePrompt,createCharacterStorage,generationRateLimit,handleCharacterApi,resetGenerationRateLimits,sanitizeCharacterName,validatePhoto} from './worker/character-api.mjs';
@@ -111,6 +111,27 @@ test('a dashing pursuer still catches the collector',()=>{
   Object.assign(p,start,{target:null,progress:0,dir:null});p.dashRequested=true;
   for(let i=0;i<60&&s.phase==='playing';i++){if(!p.target)p.queued=neighbors(p.x,p.y).sort((a,b)=>field.get(key(a.x,a.y))-field.get(key(b.x,b.y)))[0].name;step(s,1/60);}
   assert.equal(s.phase,'result');assert.deepEqual(s.catchers,[1]);
+});
+const findRow=clear=>{for(let y=1;y<HEIGHT-1;y++)for(let x=1;x<WIDTH-5;x++){if(!open(x,y)||!open(x+4,y))continue;const between=[1,2,3].map(i=>open(x+i,y));if(clear?between.every(Boolean):between.some(v=>!v))return {x,y};}return null;};
+test('the AI collector dashes when a pursuer is within 3 tiles',()=>{
+  const s=playing([{control:'ai'},{control:'arrows'},{control:'pad:0'},{control:'pad:1'}]),c=s.actors[0];
+  for(const a of s.actors.slice(1))Object.assign(a,{x:c.x+10,y:c.y+10});
+  assert.equal(aiWantsDash(c,s),false);
+  Object.assign(s.actors[2],{x:c.x+2,y:c.y+1});assert.equal(aiWantsDash(c,s),true);
+  c.dashTime=1;assert.equal(aiWantsDash(c,s),false);
+});
+test('an AI pursuer saves its dash for a clear straight line within 5 tiles',()=>{
+  const s=playing([{control:'wasd'},{control:'ai'},{control:'pad:0'},{control:'pad:1'}]),c=s.actors[0],p=s.actors[1];
+  const clear=findRow(true),blocked=findRow(false);assert.ok(clear&&blocked);
+  Object.assign(c,{x:clear.x,y:clear.y,target:null});Object.assign(p,{x:clear.x+4,y:clear.y,target:null});assert.equal(aiWantsDash(p,s),true);
+  Object.assign(c,{x:blocked.x,y:blocked.y});Object.assign(p,{x:blocked.x+4,y:blocked.y});assert.equal(aiWantsDash(p,s),false);
+  Object.assign(c,{x:clear.x,y:clear.y});Object.assign(p,{x:clear.x+4,y:clear.y+1});assert.equal(aiWantsDash(p,s),false);
+  Object.assign(p,{x:clear.x+4,y:clear.y,dashesLeft:0});assert.equal(aiWantsDash(p,s),false);
+});
+test('AI players use their dash inside step',()=>{
+  const s=playing([{control:'ai'},{control:'arrows'},{control:'pad:0'},{control:'pad:1'}]),c=s.actors[0];
+  Object.assign(s.actors[1],{x:c.x+1,y:c.y+1});
+  assert.ok(step(s,1/60).includes('dash'));assert.ok(c.dashTime>0);
 });
 test('gamepads are offered before keyboards and every control has a visible name',()=>{assert.deepEqual(controlOrder([{index:0},{index:3}]),['pad:0','pad:3','wasd','arrows']);assert.deepEqual(controlOrder([]),['wasd','arrows']);assert.equal(controlName('pad:0'),'PAD 1');assert.equal(controlName('pad:3'),'PAD 4');assert.equal(controlName('wasd'),'WASD KEYS');assert.equal(controlName('arrows'),'ARROW KEYS');assert.equal(controlName('ai'),'');});
 test('any gamepad button or direction identifies the pad, including axis-only D-pads',()=>{const idle={axes:[0,0],buttons:Array.from({length:10},()=>({pressed:false}))};assert.equal(padPressed(idle),false);assert.equal(padPressed({...idle,axes:[0,-1]}),true);assert.equal(padPressed({...idle,buttons:idle.buttons.map((button,i)=>({pressed:i===1}))}),true);});

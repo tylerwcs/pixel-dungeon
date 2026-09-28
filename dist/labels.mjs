@@ -1,4 +1,4 @@
-import {roundScores} from './engine.mjs';
+import {roundScores,DASH_COOLDOWN} from './engine.mjs';
 
 // Round-result wording, kept pure so the Node tests can check it.
 export function listNames(names){return names.length<2?names.join(''):`${names.slice(0,-1).join(', ')} & ${names.at(-1)}`;}
@@ -12,4 +12,9 @@ export function roundRows(state,names,totals){
     const collector=index===state.collector,action=collector?`Collector · ${state.collected} gold collected`:state.catchers.includes(index)?`Caught ${names[state.collector]}`:'No catch';
     return {index,name,action,earned:earned[index],total:totals[index],collector};
   });
+}
+export function dashStatus(a){
+  if(a.dashTime>0)return {text:'⚡ DASHING',charge:1,dashing:true,spent:false};
+  if(a.collector)return a.dashCooldown>0?{text:`⚡ ${Math.ceil(a.dashCooldown)}s`,charge:1-a.dashCooldown/DASH_COOLDOWN,dashing:false,spent:false}:{text:'⚡ DASH',charge:1,dashing:false,spent:false};
+  return a.dashesLeft>0?{text:'⚡ DASH ×1',charge:1,dashing:false,spent:false}:{text:'DASH USED',charge:0,dashing:false,spent:true};
 }

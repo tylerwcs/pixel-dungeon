@@ -11,7 +11,7 @@ function footAnchor(source,time=0,direction='down'){
   for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(pixels[(y*size+x)*4+3]>24){top=Math.min(top,y);bottom=y;}
   // Find the shoes, excluding the bag and waving hand from horizontal alignment.
   for(let y=Math.max(top,Math.floor(bottom-(bottom-top)*.1));y<=bottom;y++)for(let x=0;x<size;x++)if(pixels[(y*size+x)*4+3]>24){left=Math.min(left,x);right=Math.max(right,x);}
-  const anchor={image,x:bottom<0?0:((left+right+1)/2-size/2)/size,y:bottom<0?.42:(bottom+1-size/2)/size};
+  const anchor={image,x:bottom<0?0:((left+right+1)/2-size/2)/size,y:bottom<0?.42:(bottom+1-size/2)/size,height:bottom<0?0:(bottom-top+1)/size};
   footAnchors.set(key,anchor);return anchor;
 }
 export function loadSocialFrame(){
@@ -32,9 +32,12 @@ export function drawVideoCharacter(ctx,asset,animation,width,height,time=0,still
   const pose=animation==='wave'?(still?0:waveFrame(time,source.fps))/source.fps:(still?0:time);
   const direction=animation==='wave'||still?'down':['down','left','right','up'][Math.floor(time/1.5)%4];
   // Anchor visible shoes to the platform, not the transparent sprite-cell centre.
-  // A fixed neutral anchor keeps waving arms from moving the body sideways.
-  // Walking poses are measured separately because the renderer crops each pose.
-  const size=width*.95,anchor=animation==='wave'?footAnchor(source):footAnchor(source,pose,direction);
+  // Generated cells can shift even when the prompt asks for a stationary torso.
+  // Measure each pose's shoes so raised hands cannot pull the body sideways.
+  // Normalize to the neutral front-facing height: cell padding and the walk
+  // renderer's atlas scale must not make one animation smaller than the other.
+  // Keep that scale throughout the cycle, preserving natural step/head motion.
+  const neutral=footAnchor(source),size=neutral.height>0?width*.84/neutral.height:width*.95,anchor=footAnchor(source,pose,direction);
   drawSprite(ctx,source,width/2-anchor.x*size,height*(background==='framed'?.745:.67)-anchor.y*size,size,pose,direction,true);
 }
 export async function createAnimationVideo(asset,animation,onProgress=()=>{},{name='',background='framed'}={}){

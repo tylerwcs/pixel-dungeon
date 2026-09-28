@@ -1,10 +1,10 @@
 import {loadCharacterAsset,cache} from './render.mjs?v=wave-1';
-import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=position-2';
+import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=position-3';
 
 export async function mountCharacterView(container,character){
   const asset=await loadCharacterAsset(character),urls=[],cards=[];let frameId,exporting=false,disposed=false,frame=null;
   container.replaceChildren();
-  // A failed decorative asset must not block joining or the plain video option.
+  // A failed decorative asset must not block joining.
   loadSocialFrame().then(image=>{frame=image;}).catch(()=>{});
   const supportsShare=()=>typeof navigator.share==='function'&&typeof navigator.canShare==='function';
   for(const animation of ['wave','walk']){
@@ -14,9 +14,10 @@ export async function mountCharacterView(container,character){
     const status=document.createElement('p');status.className='download-status';status.setAttribute('role','status');
     const actions=document.createElement('div');actions.className='video-actions';
     const item={canvas,animation,buttons:[],files:new Map(),available:animation!=='wave'||!!(asset.wave&&cache.has(asset.wave.src))};cards.push(item);
-    for(const background of ['framed','black']){
-      const button=document.createElement('button');button.type='button';button.className=`download-button ${background==='framed'?'share-primary':'share-secondary'}`;button.dataset.background=background;
-      const label=()=>`${supportsShare()?'Share':'Download'} ${background==='framed'?'with event frame':'on black'}`;
+    {
+      const background='framed';
+      const button=document.createElement('button');button.type='button';button.className='download-button share-primary';button.dataset.background=background;
+      const label=()=>`${supportsShare()?'Share':'Download'} with event frame`;
       button.textContent=label();button.disabled=!item.available;item.buttons.push(button);actions.append(button);
       button.onclick=async()=>{
         if(exporting||disposed)return;exporting=true;cards.forEach(c=>c.buttons.forEach(b=>b.disabled=true));

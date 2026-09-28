@@ -32,11 +32,11 @@ async function choosePhoto(file){
   finally{preparing=false;controls();}
 }
 function showTicket(ticket){
-  stopCamera();selectedId=ticket.id;$('recentDialog').close();$('forge').hidden=true;$('ticketCard').hidden=false;$('ticketName').textContent=ticket.name;
+  stopCamera();selectedId=ticket.id;$('recentDialog').close();$('forge').hidden=true;$('photoPicker').hidden=true;$('ticketCard').hidden=false;$('ticketName').textContent=ticket.name;
   const url=`${location.origin}/character/?job=${ticket.id}#access=${encodeURIComponent(ticket.token)}`;
   drawQR($('progressQR'),url);$('ticketStatus').textContent=stageLabels[ticket.status]||'Photo received';$('ticketTitle').focus();window.scrollTo(0,0);
 }
-function nextCharacter(){stopCamera();clearPhoto();selectedId=null;$('characterName').value='';$('boothError').textContent='';$('ticketCard').hidden=true;$('forge').hidden=false;controls();$('characterName').focus();window.scrollTo(0,0);void startCamera();}
+function nextCharacter(){stopCamera();clearPhoto();selectedId=null;$('characterName').value='';$('boothError').textContent='';$('ticketCard').hidden=true;$('forge').hidden=false;$('photoPicker').hidden=false;controls();$('characterName').focus();window.scrollTo(0,0);void startCamera();}
 function renderTickets(){
   const list=$('recentTickets');list.replaceChildren();
   $('recentEmpty').hidden=tickets.length>0;

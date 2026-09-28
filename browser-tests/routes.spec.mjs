@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 
 for(const trailing of ['', '/'])test(`event pages load their styling and scripts ${trailing?'with':'without'} a trailing slash`,async({page},testInfo)=>{
   const broken=[];page.on('response',response=>{if(/\.(css|mjs|js)(\?|$)/.test(response.url())&&response.status()>=400)broken.push(response.url());});
-  for(const route of ['booth','character','pass','join']){
+  for(const route of ['booth','booth-display','booth-camera','character','pass','join']){
     await page.goto('/'+route+trailing);
     if(route==='booth'){
       await expect(page.locator('.booth-shell')).toHaveCSS('display','grid');
@@ -15,6 +15,10 @@ for(const trailing of ['', '/'])test(`event pages load their styling and scripts
         await testInfo.attach(`booth-${width}`,{body:await page.screenshot({fullPage:true}),contentType:'image/png'});
       }
       await page.locator('#openRecent').click();await expect(page.locator('#recentDialog')).toBeVisible();await page.locator('#closeRecent').click();
+    }else if(route==='booth-display'){
+      await expect(page.locator('.remote-display-shell')).toBeVisible();await expect(page.locator('#pairQR')).toBeVisible();await expect(page.locator('#pairStatus')).toContainText(/Scan this QR|Phone connected/);
+    }else if(route==='booth-camera'){
+      await expect(page.locator('.phone-booth-shell')).toBeVisible();await expect(page.locator('#cameraError')).toContainText('pairing link is incomplete');
     }else if(route==='character'){
       await expect(page.locator('#progressStatus')).toContainText('progress link is incomplete');
       await expect(page.locator('.character-shell')).toHaveCSS('display','grid');

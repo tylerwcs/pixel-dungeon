@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080b20"><title>Booth Camera · Pixel Dungeon Chase</title><link rel="stylesheet" href="/style.css?v=celestial-10"><link rel="stylesheet" href="/booth-camera/camera.css?v=remote-1"></head>
+<body><main class="phone-booth-shell">
+  <header class="phone-header"><img src="/assets/yep-event-logo.webp" alt="Ecopialand Year End Party 2026"><span id="pairState" class="pill">CONNECTING</span></header>
+  <section id="capturePanel" class="phone-card" aria-labelledby="captureTitle">
+    <p class="eyebrow">BOOTH PHONE</p><h1 id="captureTitle">Photograph the next guest</h1><p class="phone-note">The photo uploads directly to the forge. The big display will show progress and the guest’s QR.</p>
+    <label class="name-field">Character name<input id="characterName" maxlength="28" autocomplete="off" placeholder="e.g. Mina"></label>
+    <div class="phone-photo-stage"><img id="photoPreview" alt="Selected attendee photo" hidden><span id="photoPlaceholder">READY FOR<br>YOUR PHOTO</span></div>
+    <div class="phone-photo-actions"><label class="primary-button">Open camera<input id="cameraFile" type="file" accept="image/jpeg,image/png,image/webp" capture="environment"></label><label class="secondary-button">Choose photo<input id="libraryFile" type="file" accept="image/jpeg,image/png,image/webp"></label><button id="clearPhoto" class="text-button" type="button">Retake / clear</button></div>
+    <p id="cameraError" class="phone-error" role="alert"></p><button id="sendPhoto" class="primary-button wide" type="button" disabled>Send photo to the big display</button>
+  </section>
+  <section id="sentPanel" class="phone-card sent-card" aria-labelledby="sentTitle" hidden><p class="eyebrow">SENT TO DISPLAY</p><h1 id="sentTitle">The character is being forged</h1><h2 id="sentName"></h2><p id="sentStatus" class="sent-status" role="status">Photo received</p><p>The guest’s QR is now on the big display. You can prepare the next visitor while they follow progress on their own phone.</p><p id="sentError" class="phone-error" role="alert"></p><button id="nextGuest" class="primary-button wide" type="button">Photograph next guest →</button></section>
+</main><script type="module" src="/booth-camera/camera.mjs?v=remote-1"></script></body></html>

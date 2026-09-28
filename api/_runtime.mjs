@@ -30,8 +30,19 @@ const sessionStore={
   async write(id,lobby,version){const expected=version??'0',seconds=Math.max(60,Math.ceil((Date.parse(lobby.expiresAt)-Date.now())/1000));return await redis.eval(WRITE_LOBBY,[`lobby:${id}`,`lobby:${id}:rev`],[expected,String(Number(expected)+1),JSON.stringify(lobby),String(seconds)])===1;}
 };
 
+const WRITE_BOOTH_SESSION=`local current=redis.call('GET',KEYS[2]) or '0'
+if current~=ARGV[1] then return 0 end
+redis.call('SET',KEYS[1],ARGV[3],'EX',ARGV[4])
+redis.call('SET',KEYS[2],ARGV[2],'EX',ARGV[4])
+return 1`;
+
+const boothSessionStore={
+  async read(id){const [session,revision]=await redis.mget(`booth-session:${id}`,`booth-session:${id}:rev`);return session?{session,version:String(revision??0)}:null;},
+  async write(id,session,version){const expected=version??'0',seconds=Math.max(60,Math.ceil((Date.parse(session.expiresAt)-Date.now())/1000));return await redis.eval(WRITE_BOOTH_SESSION,[`booth-session:${id}`,`booth-session:${id}:rev`],[expected,String(Number(expected)+1),JSON.stringify(session),String(seconds)])===1;}
+};
+
 const rateLimiter={
   async hit(key,now,limit,windowMs){const bucket=`ratelimit:generate:${key}:${Math.floor(now/windowMs)}`,count=await redis.incr(bucket);if(count===1)await redis.expire(bucket,Math.ceil(windowMs/1000));return count<=limit;}
 };
 
-export const vercelHandler={async fetch(request){return handleAppApi(request,process.env,{characterStorage,sessionStore,rateLimiter,jobStorage,defer:waitUntil});}};
+export const vercelHandler={async fetch(request){return handleAppApi(request,process.env,{characterStorage,sessionStore,boothSessionStore,rateLimiter,jobStorage,defer:waitUntil});}};

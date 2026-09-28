@@ -15,6 +15,7 @@ Browser (`dist/`, served as static files):
 - `input.mjs` — keyboard and gamepad normalization
 - `preferences.mjs` — IndexedDB mute preference
 - `booth/` — photo booth that generates a character and shows its pass QR
+- `booth-display/`, `booth-camera/` — paired large-screen display and crew-phone camera flow
 - `pass/` — saves a character pass on the visitor's phone
 - `join/` — phone view of the lobby: claim a slot quadrant, ready up
 - `qr.mjs`, `vendor/qrcode.mjs` — QR drawing (`vendor/` is copied from `node_modules` by the build)
@@ -59,4 +60,4 @@ Hosts for that API:
 
 ## Product boundaries
 
-Desktop keyboard/gamepad play on one shared screen, one maze, four rounds with a rotating collector. Phones are used only to join lobby slots and ready up; they do not control characters. Out of scope: online play, touch controls, GIF import, power-ups, round timer.
+Desktop keyboard/gamepad play on one shared screen, one maze, four rounds with a rotating collector. Phones join lobby slots, ready up, and may act as the paired photo-booth camera; they do not control characters. Out of scope: online play, game touch controls, GIF import, power-ups, round timer.

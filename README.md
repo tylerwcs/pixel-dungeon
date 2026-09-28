@@ -12,7 +12,9 @@ A local multiplayer browser game for 1–4 people: one collector, three pursuers
 
 ## Character passes and matchmaking
 
-The crew runs `/booth/` on one device. Enter the attendee's name and use **Use live camera → Take photo & start**, or choose an existing photo and press **Start generation & show QR**. Photos are resized before upload. Once the upload is accepted, the capture form is replaced by a personal progress QR. Help the guest scan it, then press **Generate next character** to return to a fresh capture form while generation continues. The corner history icon opens recent attendees to recover earlier QRs, including after a page refresh.
+For a separate camera and display, open `/booth-display/` on the large screen. Install it from Chrome's **Add to Home screen** prompt to launch in fullscreen without browser chrome. Scan its private pairing QR once with the crew phone, then use `/booth-camera/` on that phone to enter the attendee name and take each photo with the rear camera. The phone uploads directly to the forge; the display receives only the private job ticket and automatically shows progress plus the guest's QR. Press **Photograph next guest** on the phone to reset both screens. Pairings recover after refresh and expire after 12 hours.
+
+The original one-device workflow remains available at `/booth/`. Enter the attendee's name and use **Use live camera → Take photo & start**, or choose an existing photo and press **Start generation & show QR**. Photos are resized before upload. Once the upload is accepted, the capture form is replaced by a personal progress QR. Help the guest scan it, then press **Generate next character** to return to a fresh capture form while generation continues. The corner history icon opens recent attendees to recover earlier QRs, including after a page refresh.
 
 Attendees scan that QR with their phone camera to open `/character/`. The page polls real stages: photo received, character design, walking animation, waving animation, finishing, ready. They can leave the booth while this runs. When ready, they see both animations and can share separate six-second 1080×1920 H.264 MP4 clips. MP4 export runs locally in a Web Worker using WebAssembly, defaults to the event frame with the character’s name, with a plain black alternative, and does not upload anything to Instagram or require an Instagram account. There are no sprite-sheet downloads or separate Save step in the attendee flow. Sharing uses the native file share sheet; browsers without file sharing download directly. If encoding outlasts the user gesture, the same Share button opens the prepared file on a fresh tap. Full-HD frames are fed to the encoder one at a time to limit phone memory use. Actual sharing to a phone's photo library depends on its browser/share sheet.
 
@@ -32,13 +34,15 @@ The game host polls its lobby session, loads claimed characters automatically, a
 
 Lobby writes are compare-and-set: every slot action re-reads the lobby and retries if another phone changed it first, so simultaneous joins are never lost.
 
-Character-pass secrets are kept out of server metadata and are only placed in the URL fragment while the pass moves from the booth to the phone. Lobby invitations expire after four hours; Vercel character-pass metadata is retained for seven days. Treat both QRs as private during an event.
+Character-pass and booth-pairing secrets are kept out of query strings and stored server-side only as hashes. Pairing and pass secrets move to phones in URL fragments. Booth pairings expire after 12 hours, lobby invitations after four hours, and Vercel character-pass metadata is retained for seven days. Treat the QRs as private during an event.
 
 ## Source and local development
 
 This folder is a self-contained Codex-ready Git project. Open this directory as a local project in Codex so it can discover `AGENTS.md`, use the repository history, and run the documented commands.
 
 Install dependencies with `npm install`, then install the browser once with `npx playwright install chromium`. Set `OPENAI_API_KEY` in the server environment to enable photo generation, start the local preview with `npm run dev`, then open `http://127.0.0.1:4173`. `OPENAI_IMAGE_MODEL` can override the default image-edit model. For UI work without making an API request, set `MOCK_CHARACTER_API=1`. Run engine and behavior verification with `npm test`, real Chromium checks with `npm run test:browser`, or both with `npm run test:all`.
+
+To test with a physical phone on the same Wi-Fi in PowerShell, run `$env:HOST='0.0.0.0'; $env:MOCK_CHARACTER_API='1'; npm run dev`, then open `http://<computer-LAN-IP>:4173/booth-display/` on the monitor. Local-network HTTP camera access varies by phone/browser; the deployed HTTPS site is the reliable event setup.
 
 The browser application remains in `dist/`. `npm run build` prepares the static bundle and its Worker files. The OpenAI API key is never exposed to the browser. JavaScript modules require HTTP rather than opening `index.html` directly from disk.
 
@@ -53,7 +57,7 @@ The included `vercel.json` serves `dist/` and deploys the explicit nested routes
 - `OPENAI_IMAGE_MODEL` only when overriding the default model (`gpt-image-2.5-sunburst`)
 - `CHARACTER_RATE_LIMIT` only when changing the number of characters one IP address may generate per 10 minutes (default 20). The booth is a single device, so this is effectively the booth's throughput cap and the guard on API credits. On Vercel the count is shared through Redis; the local server and Worker count per process.
 
-Vercel Blob stores sprite PNGs. Upstash Redis stores private generation-job state, character metadata, the recent-character index, short-lived lobby sessions with their revision counters, and generation rate-limit counters. Run `npm run build` and `npm test` before deploying. The repository does not make an OpenAI request during build, tests, or ordinary lobby/gameplay use; credits are used only after a visitor submits a photo for generation.
+Vercel Blob stores sprite PNGs. Upstash Redis stores private generation-job state, character metadata, the recent-character index, short-lived lobby and booth-pairing sessions with their revision counters, and generation rate-limit counters. Run `npm run build` and `npm test` before deploying. The repository does not make an OpenAI request during build, tests, or ordinary lobby/gameplay use; credits are used only after a visitor submits a photo for generation.
 
 The simulation is in `dist/engine.mjs`, rendering in `dist/render.mjs`, control normalization in `dist/input.mjs`, and the mute preference in `dist/preferences.mjs`. The page uses Canvas 2D and semantic HTML menus with no runtime framework. The game screen needs the lobby API to fill player slots, but gameplay itself never calls OpenAI and needs no account. Fonts use Google Fonts with local sans-serif fallbacks.
 
@@ -67,7 +71,7 @@ The Node suite covers connected maze/coins, 1–4-player setup, countdown, walls
 
 Playwright browser QA covers the fullscreen lobby, the effective 150%-zoom desktop size, adding AI players, starting a game, and the final podium at fullscreen and compact desktop sizes. Podium screenshots are attached to the test output for every run. Structured game-state/start/pause tools were exercised through WebMCP, including invalid inputs and invalid-state errors.
 
-The booth tests exercise overlapping attendee jobs, private progress links, duplicate submissions, expired jobs, camera capture, QR recovery after refresh, MP4 encoding and playback, pass creation, and scanning a real lobby QR image. Desktop and narrow layouts are captured for review. Generation uses fixture artwork; camera permission and media streams are simulated in Chromium, so event-device camera and native phone sharing still need a hardware check.
+The booth tests exercise overlapping attendee jobs, private progress links, duplicate submissions, expired jobs, paired-phone capture/display/reset, camera capture, QR recovery after refresh, MP4 encoding and playback, pass creation, and scanning a real lobby QR image. Desktop and narrow layouts are captured for review. Generation uses fixture artwork; camera permission and media streams are simulated in Chromium, so event-device camera and native phone sharing still need a hardware check.
 
 Hardware limitation: physical gamepads and separate Chrome/Edge installations were not available to the browser tools. Gamepad inputs were tested with synthetic unit-test fixtures; UI verification used the Codex in-app browser. These are not substitutes for a physical four-player compatibility/play-balance test.
 

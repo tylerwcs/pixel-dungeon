@@ -10,8 +10,8 @@ copyFileSync(join(root,'node_modules','h264-mp4-encoder','embuild','dist','h264-
 copyFileSync(join(root,'node_modules','h264-mp4-encoder','LICENSE.md'),join(publicRoot,'vendor','h264-mp4-encoder.LICENSE.txt'));
 copyFileSync(join(root,'node_modules','jsqr','LICENSE'),join(publicRoot,'vendor','jsqr.LICENSE.txt'));
 writeFileSync(join(publicRoot,'vendor','jsqr.mjs'),readFileSync(join(root,'node_modules','jsqr','dist','jsQR.js'),'utf8')+'\nexport default globalThis.jsQR;\n');
-const types={'.css':'text/css; charset=utf-8','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp'};
-const textTypes=new Set(['.css','.html','.mjs','.js']);
+const types={'.css':'text/css; charset=utf-8','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp'};
+const textTypes=new Set(['.css','.html','.mjs','.js','.webmanifest','.svg']);
 const files=[];
 function walk(directory){for(const entry of readdirSync(directory,{withFileTypes:true})){const path=join(directory,entry.name),name=relative(publicRoot,path).split(sep).join('/');if(name==='server'||name.startsWith('server/')||name==='.openai'||name.startsWith('.openai/'))continue;if(entry.isDirectory())walk(path);else files.push(path);}}
 walk(publicRoot);
@@ -22,6 +22,7 @@ copyFileSync(join(root,'worker','index.mjs'),join(outputRoot,'index.js'));
 copyFileSync(join(root,'worker','character-api.mjs'),join(outputRoot,'character-api.mjs'));
 copyFileSync(join(root,'worker','character-style-reference.mjs'),join(outputRoot,'character-style-reference.mjs'));
 copyFileSync(join(root,'worker','character-jobs.mjs'),join(outputRoot,'character-jobs.mjs'));
+copyFileSync(join(root,'worker','booth-session-api.mjs'),join(outputRoot,'booth-session-api.mjs'));
 copyFileSync(join(root,'worker','app-api.mjs'),join(outputRoot,'app-api.mjs'));
 copyFileSync(join(root,'worker','lobby-api.mjs'),join(outputRoot,'lobby-api.mjs'));
 copyFileSync(join(root,'worker','tokens.mjs'),join(outputRoot,'tokens.mjs'));

@@ -14,8 +14,10 @@ if (existsSync(envFile)) for (const line of readFileSync(envFile, "utf8").split(
 }
 const requestedPort = Number.parseInt(process.env.PORT ?? "4173", 10);
 const port = Number.isFinite(requestedPort) ? requestedPort : 4173;
+const host = process.env.HOST || "127.0.0.1";
 const localCharacters = new Map();
 const localLobbies = new Map();
+const localBoothSessions = new Map();
 const jobStorage = memoryJobStorage();
 
 const contentTypes = new Map([
@@ -23,6 +25,7 @@ const contentTypes = new Map([
   [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
   [".mjs", "text/javascript; charset=utf-8"],
+  [".webmanifest", "application/manifest+json; charset=utf-8"],
   [".png", "image/png"],
   [".svg", "image/svg+xml"],
   [".webp", "image/webp"],
@@ -40,7 +43,8 @@ async function apiRequest(request, response) {
     }
     chunks.push(chunk);
   }
-  const webRequest = new Request(`http://127.0.0.1:${port}${request.url}`, {
+  const requestOrigin = `http://${request.headers.host || `127.0.0.1:${port}`}`;
+  const webRequest = new Request(new URL(request.url, requestOrigin), {
     method: request.method,
     headers: request.headers,
     body: request.method === "GET" || request.method === "HEAD" ? undefined : Buffer.concat(chunks),
@@ -52,7 +56,7 @@ async function apiRequest(request, response) {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY || (mockFetch ? "local-mock" : ""),
     OPENAI_IMAGE_MODEL: process.env.OPENAI_IMAGE_MODEL,
     CHARACTER_RATE_LIMIT: process.env.CHARACTER_RATE_LIMIT,
-  }, { store: localCharacters, lobbyStore: localLobbies, jobStorage, defer:task=>{task.catch(()=>{});}, ...(mockFetch ? { fetchImpl: mockFetch } : {}) });
+  }, { store: localCharacters, lobbyStore: localLobbies, boothSessionMap: localBoothSessions, jobStorage, defer:task=>{task.catch(()=>{});}, ...(mockFetch ? { fetchImpl: mockFetch } : {}) });
   response.writeHead(webResponse.status, Object.fromEntries(webResponse.headers));
   response.end(Buffer.from(await webResponse.arrayBuffer()));
 }
@@ -101,6 +105,7 @@ const server = createServer(async (request, response) => {
   createReadStream(filePath).pipe(response);
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`Pixel Dungeon Chase: http://127.0.0.1:${port}`);
+server.listen(port, host, () => {
+  console.log(`Pixel Dungeon Chase: http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`);
+  if (host === "0.0.0.0") console.log(`Booth phones may connect at http://<this-computer's-LAN-IP>:${port}`);
 });

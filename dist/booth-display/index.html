@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080b20"><title>Booth Display · Pixel Dungeon Chase</title><link rel="manifest" href="/booth-display/manifest.webmanifest"><link rel="stylesheet" href="/style.css?v=celestial-10"><link rel="stylesheet" href="/booth-display/display.css?v=remote-1"></head>
+<body><main class="remote-display-shell">
+  <header class="remote-display-header"><img src="/assets/yep-event-logo.webp" alt="Ecopialand Year End Party 2026"><div class="display-actions"><span id="connectionPill" class="pill">CONNECTING</span><button id="installDisplay" class="small-button" type="button" hidden>Install display</button><button id="fullscreenDisplay" class="small-button" type="button">⛶ Full screen</button></div></header>
+  <section id="pairPanel" class="remote-display-card pair-panel" aria-labelledby="pairTitle">
+    <div><p class="eyebrow">PHONE CAMERA</p><h1 id="pairTitle">Pair the booth phone</h1><p id="pairStatus" class="display-lead" role="status">Creating a private booth pairing…</p><p class="display-help">Scan this once with the phone the booth crew will use for photos. Keep this screen open.</p></div>
+    <div class="pair-qr-wrap"><canvas id="pairQR" width="320" height="320" aria-label="Pair booth phone QR"></canvas><small id="pairCode">PAIRING…</small></div>
+  </section>
+  <section id="ticketPanel" class="remote-display-card ticket-display" aria-labelledby="ticketTitle" hidden>
+    <div class="ticket-copy"><p class="eyebrow">CHARACTER IN PROGRESS</p><h1 id="ticketTitle">Photo received</h1><h2 id="ticketName"></h2><p id="jobStatus" class="display-lead" role="status"></p><p id="guestInstruction" class="display-help">Scan the QR to follow your character, then enjoy the event while the forge works.</p></div>
+    <div class="ticket-visual"><canvas id="characterPreview" width="320" height="320" hidden aria-label="Generated pixel character preview"></canvas><canvas id="progressQR" width="320" height="320" aria-label="Personal character progress QR"></canvas></div>
+  </section>
+  <p id="displayError" class="display-error" role="alert"></p>
+  <footer>Photos travel directly from the paired phone to the character forge and are never stored.</footer>
+</main><script type="module" src="/booth-display/display.mjs?v=remote-1"></script></body></html>

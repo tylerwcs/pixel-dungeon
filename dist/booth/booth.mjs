@@ -1,5 +1,5 @@
 import {drawQR} from '../qr.mjs';
-import {readJob,stageLabels} from '../job-client.mjs?v=design-1';
+import {readJob,stageLabels} from '../job-client.mjs?v=party-1';
 const $=id=>document.getElementById(id),historyKey='pixel-dungeon-booth-tickets';
 let photoFile=null,cameraStream=null,cameraRequest=0,busy=false,preparing=false,pendingTicket=null,selectedId=null,polling=false;
 let tickets=[];try{tickets=JSON.parse(localStorage.getItem(historyKey)||'[]').filter(item=>item.id&&item.token&&Date.now()-Date.parse(item.createdAt)<86400000).slice(0,40);}catch{}

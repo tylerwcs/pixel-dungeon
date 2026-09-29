@@ -24,9 +24,11 @@ test('two attendees receive private QR receipts before either generation finishe
   assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'walking');
   release.splice(0).forEach(resolve=>resolve());await new Promise(resolve=>setImmediate(resolve));
   assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'waving');
+  release.splice(0).forEach(resolve=>resolve());await new Promise(resolve=>setImmediate(resolve));
+  assert.equal((await (await harness.call(statusRequest(first))).json()).job.status,'partying');
   release.splice(0).forEach(resolve=>resolve());await Promise.all(harness.tasks);
   for(const input of inputs.slice(2)){assert.equal(input.getAll('image[]').length,0);assert.equal(await input.get('image').text(),'artwork');}
-  const ready=(await (await harness.call(statusRequest(first))).json()).job;assert.equal(ready.status,'complete');assert.equal(ready.character.id,first);assert.equal(harness.store.size,2);
+  const ready=(await (await harness.call(statusRequest(first))).json()).job;assert.equal(ready.status,'complete');assert.equal(ready.character.party.fps,6);assert.match(ready.character.party.imageUrl,/animation=party/);assert.equal(ready.character.id,first);assert.equal(harness.store.size,2);
   const pass=await harness.call(new Request(`${origin}/api/characters/${first}/pass`,{method:'POST',body:JSON.stringify({claimToken:token})}));assert.equal(pass.status,200);
 });
 
@@ -57,4 +59,10 @@ test('unsupported hosts, invalid tickets and rejected quotas do not accept jobs'
 test('scanner accepts only well-formed lobby invitations from the current event site',()=>{
   const id=crypto.randomUUID(),url=`${origin}/join/?lobby=${id}&token=${token}`;assert.equal(lobbyInvite(url,origin),url);
   for(const bad of [`https://evil.test/join/?lobby=${id}&token=${token}`,`javascript:alert(1)`,`${origin}/character/?job=${id}`,`${origin}/join/?lobby=${id}&token=short`,`${origin}/join/?lobby=bad&token=${token}`])assert.equal(lobbyInvite(bad,origin),null);
+});
+
+test('party failures do not publish incomplete jobs, and old completed jobs do not claim a party sheet',async()=>{
+ let calls=0;const harness=setup(async()=>++calls===4?Response.json({error:{code:'insufficient_quota'}},{status:429}):Response.json({data:[{b64_json:btoa('artwork')}]})),id=crypto.randomUUID();
+ await harness.call(createRequest(id));await Promise.all(harness.tasks);assert.equal(calls,4);assert.equal(harness.store.size,0);assert.equal((await (await harness.call(statusRequest(id))).json()).job.status,'failed');
+ const legacy=setup(),oldId=crypto.randomUUID();await legacy.call(createRequest(oldId));await Promise.all(legacy.tasks);const oldJob=legacy.records.get(oldId);delete oldJob.hasParty;legacy.records.set(oldId,oldJob);assert.equal((await (await legacy.call(statusRequest(oldId))).json()).job.character.party,undefined);
 });

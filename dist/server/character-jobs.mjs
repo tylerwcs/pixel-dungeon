@@ -1,4 +1,4 @@
-import {buildCharacterPortraitPrompt,buildCharacterPrompt,buildWavePrompt,characterRecord,clientKey,generateSheet,generationRateLimit,memoryRateLimiter,sameOrigin,sanitizeCharacterName,validatePhoto} from './character-api.mjs';
+import {buildCharacterPortraitPrompt,buildCharacterPrompt,buildWavePrompt,buildPartyPrompt,characterRecord,clientKey,generateSheet,generationRateLimit,memoryRateLimiter,sameOrigin,sanitizeCharacterName,validatePhoto} from './character-api.mjs';
 import {hashToken,tokenMatches,validId} from './tokens.mjs';
 
 export const JOB_TTL_MS=24*60*60*1000;
@@ -12,7 +12,7 @@ export function memoryJobStorage(map=new Map()){return {
 };}
 function publicJob(job,now){
   const overdue=!['complete','failed'].includes(job.status)&&now>Date.parse(job.deadlineAt);
-  return {id:job.id,name:job.name,createdAt:job.createdAt,status:overdue?'failed':job.status,...(overdue?{error:timeoutMessage}:job.error?{error:job.error}:{}),...(job.status==='complete'?{character:characterRecord(job.id,job.name,job.createdAt,'true')}:{})};
+  return {id:job.id,name:job.name,createdAt:job.createdAt,status:overdue?'failed':job.status,...(overdue?{error:timeoutMessage}:job.error?{error:job.error}:{}),...(job.status==='complete'?{character:characterRecord(job.id,job.name,job.createdAt,'true',job.hasParty)}:{})};
 }
 function receipt(job,token,origin,now){return {job:publicJob(job,now),progressUrl:`${origin}/character/?job=${job.id}#access=${encodeURIComponent(token)}`};}
 
@@ -28,9 +28,10 @@ async function runJob(job,photo,env,options){
     const design=new Blob([portrait],{type:'image/png'});
     await update('walking');const walk=await generate(design,buildCharacterPrompt());
     await update('waving');const wave=await generate(design,buildWavePrompt());
+    await update('partying');const party=await generate(design,buildPartyPrompt());
     await update('saving');ensureTime();
-    await options.characterStorage.put(job.id,walk,{name:job.name,createdAt:job.createdAt,claimHash:job.tokenHash,hasWave:'true'},wave);
-    await update('complete');
+    await options.characterStorage.put(job.id,walk,{name:job.name,createdAt:job.createdAt,claimHash:job.tokenHash,hasWave:'true',hasParty:'true'},wave,party);
+    await update('complete',{hasParty:'true'});
   }catch(error){await update('failed',{error:error.publicMessage||'Generation failed. Please ask the booth crew to try again.'}).catch(()=>{});}
 }
 

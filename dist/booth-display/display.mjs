@@ -1,5 +1,5 @@
 import {drawQR} from '../qr.mjs';
-import {readJob,stageLabels} from '../job-client.mjs?v=design-1';
+import {readJob,stageLabels} from '../job-client.mjs?v=party-1';
 import {decryptTicket} from '../ticket-crypto.mjs?v=remote-1';
 
 const $=id=>document.getElementById(id),storageKey='pixel-dungeon-booth-display-session';
@@ -46,7 +46,7 @@ async function poll(){
 $('fullscreenDisplay').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('displayError').textContent='Use Chrome’s “Add to Home screen” option to launch without the address bar.';}};
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;$('installDisplay').hidden=false;});
 $('installDisplay').onclick=async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installDisplay').hidden=true;};
-if('serviceWorker'in navigator)navigator.serviceWorker.register('/booth-display/sw.js').catch(()=>{});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('/booth-display/sw.js?v=party-1').catch(()=>{});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 const timer=setInterval(poll,2000);window.addEventListener('pagehide',()=>clearInterval(timer),{once:true});
 try{renderPairing(await ensurePairing());poll();}catch(error){$('displayError').textContent=error.message;}

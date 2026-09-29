@@ -42,10 +42,11 @@ test('crew can accept two photos while attendees follow progress and collect MP4
   const preview=phone.locator('canvas[data-animation="wave"]');await expect(preview).toHaveAttribute('data-sprite',/animation=wave/);await expect.poll(()=>preview.getAttribute('data-wave-frames')).toBe('15');
   await expect(phone.locator('canvas[data-animation="walk"]')).toHaveAttribute('data-sprite',/\/image$/);
   await expect(phone.getByRole('heading',{name:'Hello!',exact:true})).toBeVisible();
+  await expect(phone.getByRole('heading',{name:'Party time!',exact:true})).toBeVisible();await expect(phone.locator('canvas[data-animation=party]')).toHaveAttribute('data-sprite',/animation=party/);
   await expect(phone.locator('#createPass')).toHaveText('Join a game using this character');
   await phone.evaluate(()=>{Object.defineProperty(navigator,'share',{value:undefined,configurable:true});});
   await expect(phone.locator('button[data-background="black"]')).toHaveCount(0);
-  for(const [animation,background]of [['wave','framed'],['walk','framed']]){
+  for(const [animation,background]of [['wave','framed'],['walk','framed'],['party','framed']]){
     const card=phone.locator('article[data-animation="'+animation+'"]'),button=card.locator('button[data-background="'+background+'"]');
     const downloadPromise=phone.waitForEvent('download',{timeout:180000});await button.click();const download=await downloadPromise,path=testInfo.outputPath(animation+'-'+background+'.mp4');await download.saveAs(path);const bytes=fs.readFileSync(path);expect(bytes.subarray(4,8).toString()).toBe('ftyp');expect(bytes.includes(Buffer.from('avc1'))).toBe(true);
     const metadata=await phone.evaluate(source=>new Promise((resolve,reject)=>{const video=document.createElement('video');video.onloadeddata=()=>{video.currentTime=.2;};video.onseeked=()=>{const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;const ctx=c.getContext('2d');ctx.drawImage(video,0,0);resolve({duration:video.duration,width:video.videoWidth,height:video.videoHeight,corner:[...ctx.getImageData(100,200,1,1).data]});};video.onerror=()=>reject(new Error('MP4 is not playable'));video.src=source;}),'data:video/mp4;base64,'+bytes.toString('base64'));expect(metadata.duration).toBeCloseTo(6,1);expect(metadata.width).toBe(1080);expect(metadata.height).toBe(1920);if(background==='black')expect(Math.max(...metadata.corner.slice(0,3))).toBeLessThan(12);else expect(Math.max(...metadata.corner.slice(0,3))).toBeGreaterThan(20);

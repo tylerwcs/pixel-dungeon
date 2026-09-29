@@ -1,19 +1,20 @@
-import {loadCharacterAsset,cache} from './render.mjs?v=burst-1';
-import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=burst-1';
+import {loadCharacterAsset,loadImage,cache} from './render.mjs?v=burst-1';
+import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=party-1';
 
 export async function mountCharacterView(container,character){
   const asset=await loadCharacterAsset(character),urls=[],cards=[];let frameId,exporting=false,disposed=false,frame=null;
+  if(character.party){asset.party={...character.party,src:character.party.imageUrl,anchor:'cell'};await loadImage(asset.party.src).catch(()=>{});}
   container.replaceChildren();
   // A failed decorative asset must not block joining.
   loadSocialFrame().then(image=>{frame=image;}).catch(()=>{});
   const supportsShare=()=>typeof navigator.share==='function'&&typeof navigator.canShare==='function';
-  for(const animation of ['wave','walk']){
+  for(const animation of ['wave','walk',...(character.party?['party']:[])]){
     const card=document.createElement('article');card.className='animation-card';card.dataset.animation=animation;
-    const title=document.createElement('h3');title.textContent=animation==='wave'?'Hello!':'Ready to explore';
-    const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;canvas.dataset.animation=animation;canvas.setAttribute('aria-label',`${character.name} ${animation==='wave'?'waving':'walking'} in the event frame`);
+    const title=document.createElement('h3');title.textContent={wave:'Hello!',walk:'Ready to explore',party:'Party time!'}[animation];
+    const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;canvas.dataset.animation=animation;canvas.setAttribute('aria-label',`${character.name} ${{wave:'waving',walk:'walking',party:'dancing'}[animation]} in the event frame`);
     const status=document.createElement('p');status.className='download-status';status.setAttribute('role','status');
     const actions=document.createElement('div');actions.className='video-actions';
-    const item={canvas,animation,buttons:[],files:new Map(),available:animation!=='wave'||!!(asset.wave&&cache.has(asset.wave.src))};cards.push(item);
+    const item={canvas,animation,buttons:[],files:new Map(),available:animation==='walk'||!!(asset[animation]&&cache.has(asset[animation].src))};cards.push(item);
     {
       const background='framed';
       const button=document.createElement('button');button.type='button';button.className='download-button share-primary';button.dataset.background=background;
@@ -41,7 +42,7 @@ export async function mountCharacterView(container,character){
         finally{exporting=false;button.textContent=label();cards.forEach(c=>c.buttons.forEach(b=>b.disabled=!c.available));}
       };
     }
-    if(!item.available)status.textContent='A wave is not available for this character.';
+    if(!item.available)status.textContent=animation==='party'?'The party animation could not load. Refresh to try again.':'A wave is not available for this character.';
     card.append(title,canvas,actions,status);container.append(card);
   }
   const reduced=matchMedia('(prefers-reduced-motion: reduce)'),start=performance.now();

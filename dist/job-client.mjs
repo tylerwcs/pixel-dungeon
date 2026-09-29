@@ -1,4 +1,4 @@
-export const stageLabels={accepted:'Photo received',designing:'Creating your pixel character',walking:'Creating your walking animation',waving:'Creating your waving animation',saving:'Finishing your character',complete:'Your character is ready',failed:'The booth needs to try again'};
+export const stageLabels={accepted:'Photo received',designing:'Creating your pixel character',walking:'Creating your walking animation',waving:'Creating your waving animation',partying:'Creating your party animation',saving:'Finishing your character',complete:'Your character is ready',failed:'The booth needs to try again'};
 export async function readJob(ticket){
   const response=await fetch(`/api/character-jobs/${encodeURIComponent(ticket.id)}`,{headers:{authorization:`Bearer ${ticket.token}`},cache:'no-store'});
   const data=await response.json();if(!response.ok)throw Object.assign(new Error(data.error||'Could not check progress. Reconnecting…'),{status:response.status});return data.job;

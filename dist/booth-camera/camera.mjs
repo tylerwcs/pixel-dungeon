@@ -1,4 +1,4 @@
-import {readJob,stageLabels} from '../job-client.mjs?v=design-1';
+import {readJob,stageLabels} from '../job-client.mjs?v=party-1';
 import {encryptTicket,randomToken,randomUUID} from '../ticket-crypto.mjs?v=remote-1';
 
 const $=id=>document.getElementById(id),params=new URLSearchParams(location.search),sessionId=params.get('session'),fragment=new URLSearchParams(location.hash.slice(1));

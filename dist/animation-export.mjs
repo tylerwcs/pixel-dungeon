@@ -28,20 +28,21 @@ export function drawVideoBackground(ctx,width,height,name,background,frame){
   ctx.shadowColor='#02051a';ctx.shadowBlur=width*.012;ctx.fillText(label,width/2,height*.115,width*.78);ctx.restore();
 }
 export function drawVideoCharacter(ctx,asset,animation,width,height,time=0,still=false,background='framed'){
-  const source=animation==='wave'&&asset.wave&&cache.has(asset.wave.src)?asset.wave:asset;
+  const source=animation==='party'?asset.party:animation==='wave'&&asset.wave&&cache.has(asset.wave.src)?asset.wave:asset;
+  if(!source||!cache.has(source.src))return;
   const pose=animation==='wave'?(still?0:waveFrame(time,source.fps))/source.fps:(still?0:time);
-  const direction=animation==='wave'||still?'down':['down','left','right','up'][Math.floor(time/1.5)%4];
+  const direction=animation!=='walk'||still?'down':['down','left','right','up'][Math.floor(time/1.5)%4];
   // Anchor visible shoes to the platform, not the transparent sprite-cell centre.
   // Generated cells can shift even when the prompt asks for a stationary torso.
   // Measure each pose's shoes so raised hands cannot pull the body sideways.
   // Normalize to the neutral front-facing height: cell padding and the walk
   // renderer's atlas scale must not make one animation smaller than the other.
   // Keep that scale throughout the cycle, preserving natural step/head motion.
-  const neutral=footAnchor(source),size=neutral.height>0?width*.84/neutral.height:width*.95,anchor=footAnchor(source,pose,direction);
+  const neutral=footAnchor(source),size=animation==='party'?width*.94:neutral.height>0?width*.84/neutral.height:width*.95,anchor=footAnchor(source,pose,direction);
   drawSprite(ctx,source,width/2-anchor.x*size,height*(background==='framed'?.745:.67)-anchor.y*size,size,pose,direction,true);
 }
 export async function createAnimationVideo(asset,animation,onProgress=()=>{},{name='',background='framed'}={}){
-  const source=animation==='wave'?asset.wave:asset;if(!source||!cache.has(source.src))throw new Error('This animation is not available yet.');
+  const source=animation==='walk'?asset:asset[animation];if(!source||!cache.has(source.src))throw new Error('This animation is not available yet.');
   const frame=background==='framed'?await loadSocialFrame():null,width=1080,height=1920;
   const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d',{willReadFrequently:true});
   const base=document.createElement('canvas');base.width=width;base.height=height;drawVideoBackground(base.getContext('2d'),width,height,name,background,frame);

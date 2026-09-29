@@ -58,7 +58,7 @@ export async function handleLobbyApi(request,env={},options={}){
       const previous=lobby.slots.find(candidate=>candidate.guestHash===guestHash);
       if(slot.status==='ai'||(slot.status==='joined'&&slot!==previous))return json({error:'That player slot is already occupied.'},409);
       if(previous&&previous!==slot){previous.status='open';previous.ready=false;previous.character=null;delete previous.guestHash;}
-      slot.status='joined';slot.ready=false;slot.guestHash=guestHash;slot.character=characterRecord(input.characterId,character.name||'Player character',character.createdAt,character.hasWave);
+      slot.status='joined';slot.ready=false;slot.guestHash=guestHash;slot.character=characterRecord(input.characterId,character.name||'Player character',character.createdAt,character.hasWave,character.hasParty);
     });
   }
   if(action==='ready')return updateSlot(storage,id,Number(slotValue)-1,now,async(lobby,slot)=>{

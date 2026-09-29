@@ -35,9 +35,9 @@ test('native sharing uses the prepared named MP4 on a fresh tap, and cancellatio
     Object.defineProperty(navigator,'canShare',{value:({files})=>files?.[0]?.type==='video/mp4',configurable:true});
     Object.defineProperty(navigator,'share',{value:async({files,title})=>{window.shared.push({file:files[0],title});if(window.shared.length===1)throw new DOMException('Cancelled','AbortError');},configurable:true});
   });
-  await page.route('**/share-test',route=>route.fulfill({contentType:'text/html',body:'<link rel="stylesheet" href="/character.css?v=download-1"><main id="view" class="animation-previews"></main>'}));
+  await page.route('**/share-test',route=>route.fulfill({contentType:'text/html',body:'<link rel="stylesheet" href="/character.css?v=icon-1"><main id="view" class="animation-previews"></main>'}));
   await page.goto('/share-test');
-  await page.evaluate(async()=>{const {mountCharacterView}=await import('/character-view.mjs?v=download-1');await mountCharacterView(document.querySelector('#view'),{name:'Mina 星',imageUrl:'/assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',wave:{imageUrl:'/assets/monster.png',cols:4,rows:4,fps:6,layout:'directional'}});});
+  await page.evaluate(async()=>{const {mountCharacterView}=await import('/character-view.mjs?v=icon-1');await mountCharacterView(document.querySelector('#view'),{name:'Mina 星',imageUrl:'/assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',wave:{imageUrl:'/assets/monster.png',cols:4,rows:4,fps:6,layout:'directional'}});});
   const card=page.locator('article[data-animation="wave"]'),button=card.getByRole('button',{name:'Download',exact:true});
   await expect(page.getByRole('button',{name:/on black/i})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Download',exact:true})).toHaveCount(2);

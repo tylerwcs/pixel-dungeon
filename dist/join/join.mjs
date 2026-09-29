@@ -1,6 +1,6 @@
 import {mountLobbyScanner} from '../lobby-scanner.mjs?v=queue-1';
 import {readPass} from '../job-client.mjs?v=design-1';
-import {loadCharacterAsset,drawGreeting} from '../render.mjs?v=wave-1';
+import {loadCharacterAsset,drawGreeting} from '../render.mjs?v=burst-1';
 const $=id=>document.getElementById(id),passKey='pixel-dungeon-character-pass',guestKey='pixel-dungeon-guest-controller',params=new URLSearchParams(location.search);
 const lobby=params.get('lobby'),lobbyToken=params.get('token'),slotKey=`pixel-dungeon-slot-${lobby||'none'}`,colors=['#bade80','#c7a7ff','#ff9f82','#84e8ff'];
 let pass,characters=[],character,currentLobby,selectedSlot=Number(localStorage.getItem(slotKey)||0),pollPending=false;

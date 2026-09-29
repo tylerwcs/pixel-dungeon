@@ -64,10 +64,31 @@ export function createRenderer(canvas){
   }
   // Warm torch niches along the perimeter.
   const torches=[[3,0],[15,0],[0,7],[24,11],[9,20],[21,20]];
+  // Dash effects (drawing only): colour-tinted afterimages trail a dashing character and a puff marks where the dash began.
+  const trails=new Map(),dashing=new Map(),puffs=[],ghost=document.createElement('canvas');ghost.width=ghost.height=48;const g=ghost.getContext('2d');
+  function trackDashes(state,time){
+    for(const a of state.actors){const p=position(a),active=a.dashTime>0&&state.phase==='playing',trail=trails.get(a.id)||[];
+      if(active&&!dashing.get(a.id))puffs.push({x:p.x,y:p.y,start:time,color:COLORS[a.id]});dashing.set(a.id,active);
+      if(active)trail.push({x:p.x,y:p.y,facing:a.facing,time});while(trail.length&&time-trail[0].time>.3)trail.shift();trails.set(a.id,trail);}
+    while(puffs.length&&time-puffs[0].start>.35)puffs.shift();
+  }
+  function drawAfterimages(players,time){
+    for(const [id,trail] of trails){let last=Infinity;
+      for(let i=trail.length-1;i>=0;i--){const t=trail[i],age=time-t.time;if(age<.035||last-t.time<.045)continue;last=t.time;
+        g.clearRect(0,0,48,48);drawSprite(g,identityAsset(players,id),24,24,39,t.time,t.facing,true);g.globalCompositeOperation='source-atop';g.globalAlpha=.55;g.fillStyle=COLORS[id];g.fillRect(0,0,48,48);g.globalAlpha=1;g.globalCompositeOperation='source-over';
+        ctx.globalAlpha=.55*(1-age/.3);ctx.drawImage(ghost,Math.round(t.x*32+16-24),Math.round(t.y*32+13-24));ctx.globalAlpha=1;}}
+  }
+  function drawPuffs(time){
+    for(const puff of puffs){const k=(time-puff.start)/.35,x=puff.x*32+16,y=puff.y*32+16;if(k<0||k>1)continue;
+      ctx.globalAlpha=1-k;ctx.strokeStyle=puff.color;ctx.lineWidth=1+3*(1-k);ctx.beginPath();ctx.arc(x,y+4,8+26*k,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle='#e9dcc4';for(let i=0;i<6;i++){const angle=i*Math.PI/3+.4,r=6+20*k;ctx.fillRect(Math.round(x+Math.cos(angle)*r-2),Math.round(y+8+Math.sin(angle)*r*.5-2),4,4);}
+      ctx.globalAlpha=1;}
+  }
   function render(state,players,time){
     ctx.imageSmoothingEnabled=false;ctx.drawImage(bg,0,0);
     for(const [x,y]of torches){const cx=x*32+16,cy=y*32+16;const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,65);glow.addColorStop(0,'#eea75424');glow.addColorStop(1,'#eea75400');ctx.fillStyle=glow;ctx.fillRect(cx-65,cy-65,130,130);ctx.fillStyle='#9c663e';ctx.fillRect(cx-3,cy+2,6,10);ctx.fillStyle='#edac59';ctx.fillRect(cx-4,cy-6,8,10);ctx.fillStyle='#ffe6a2';ctx.fillRect(cx-2,cy-8+(Math.floor(time*4)%2)*2,4,9);}
     for(const k of state.coins){const [x,y]=k.split(',').map(Number),cx=x*32+16,cy=y*32+16;ctx.fillStyle='#8e642e';ctx.fillRect(cx-3,cy-4,7,9);ctx.fillStyle='#edbc68';ctx.fillRect(cx-3,cy-4,5,7);ctx.fillStyle='#ffe5a4';ctx.fillRect(cx-2,cy-3,2,3);}
+    trackDashes(state,time);drawPuffs(time);drawAfterimages(players,time);
     for(const a of state.actors){const p=position(a),x=p.x*32+16,y=p.y*32+16,color=COLORS[a.id];ctx.fillStyle='#0007';ctx.beginPath();ctx.ellipse(x,y+11,12,5,0,0,Math.PI*2);ctx.fill();if(a.collector){const pulse=.5+.5*Math.sin(time*5);ctx.fillStyle=`rgba(255,212,107,${.12+.14*pulse})`;ctx.beginPath();ctx.arc(x,y,19+pulse*2,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffd46b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,16,0,Math.PI*2);ctx.stroke();}else{ctx.strokeStyle=color;ctx.lineWidth=2;ctx.strokeRect(Math.round(x-12),Math.round(y-12),24,25);}drawSprite(ctx,identityAsset(players,a.id),x,y-3,39,time,a.facing,!!a.target);ctx.fillStyle=color;ctx.fillRect(Math.round(x+7),Math.round(y-17),12,12);ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillStyle='#191620';ctx.fillText(String(a.id+1),Math.round(x+13),Math.round(y-8));}
   }
   return render;

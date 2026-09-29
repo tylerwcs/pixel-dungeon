@@ -2,7 +2,9 @@ export const DIRS = {up:{x:0,y:-1,row:3},down:{x:0,y:1,row:0},left:{x:-1,y:0,row
 export const COLORS = ['#bade80','#b8a2ee','#f59b83','#88cddd'];
 export const WIDTH=25, HEIGHT=21;
 export const GAME_ROUNDS=4, CATCH_BONUS=15;
-export const DASH_BOOST=1.6, DASH_TIME=1.5, DASH_COOLDOWN=8;
+export const DASH_BOOST=3.5, DASH_TIME=.7, DASH_COOLDOWN=8;
+// A dash bursts to DASH_BOOST× speed and eases linearly back to normal as dashTime runs out.
+export function dashSpeedFactor(a){return a.dashTime>0?1+(DASH_BOOST-1)*a.dashTime/DASH_TIME:1;}
 export function dashReady(a){return a.dashTime<=0&&(a.collector?a.dashCooldown<=0:a.dashesLeft>0);}
 function clearLine(from,to,max){
   const ax=Math.round(from.x),ay=Math.round(from.y),bx=Math.round(to.x),by=Math.round(to.y);
@@ -63,7 +65,7 @@ export function aiDirection(a,state){
   const dist=distanceField(tx,ty),opts=neighbors(a.x,a.y);opts.sort((b,c)=>(dist.get(key(b.x,b.y))??Infinity)-(dist.get(key(c.x,c.y))??Infinity));return opts[0]?.name;
 }
 function move(a,dt,state){
-  let remaining=a.speed*(a.dashTime>0?DASH_BOOST:1)*dt;
+  let remaining=a.speed*dashSpeedFactor(a)*dt;
   while(remaining>0){
     if(!a.target){
       if(!a.human)a.queued=aiDirection(a,state);

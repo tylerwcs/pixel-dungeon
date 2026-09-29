@@ -3,8 +3,8 @@ import './tests/booth-sessions.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {MAP,open,distanceField,newRound,step,position,sweptContact,nextCollector,aiDirection,DIRS,key,roundScores,rankScores,CATCH_BONUS,GAME_ROUNDS,dashReady,DASH_TIME,DASH_COOLDOWN,neighbors,WIDTH,HEIGHT,aiWantsDash} from './dist/engine.mjs';
-import {connectedPads,controlsAvailable,gamepadDirection,controlOrder,controlName,padPressed,gamepadDash} from './dist/input.mjs';
+import {MAP,open,distanceField,newRound,step,position,sweptContact,nextCollector,aiDirection,DIRS,key,roundScores,rankScores,CATCH_BONUS,GAME_ROUNDS,dashReady,dashSpeedFactor,DASH_BOOST,DASH_TIME,DASH_COOLDOWN,neighbors,WIDTH,HEIGHT,aiWantsDash} from './dist/engine.mjs';
+import {connectedPads,controlsAvailable,gamepadDirection,controlOrder,controlName,padPressed,gamepadDash,gamepadStart} from './dist/input.mjs';
 import {detectSpriteFrames,identityAsset,defaults,cache,characterAsset,drawGreeting,drawSprite,waveFrame} from './dist/render.mjs';
 import {buildCharacterPortraitPrompt,buildCharacterPrompt,buildWavePrompt,createCharacterStorage,generationRateLimit,handleCharacterApi,resetGenerationRateLimits,sanitizeCharacterName,validatePhoto} from './worker/character-api.mjs';
 import {handleAppApi} from './worker/app-api.mjs';
@@ -78,13 +78,13 @@ test('gamepad deadzone, dominant stick axis, and D-pad override',()=>{assert.equ
 const dashParty=()=>[{control:'wasd'},{control:'arrows'},{control:'pad:0'},{control:'pad:1'}];
 const playing=(players=dashParty(),collector=0)=>{const s=newRound(players,collector);s.phase='playing';s.countdown=0;return s;};
 const openDirection=a=>Object.keys(DIRS).find(name=>open(a.x+DIRS[name].x,a.y+DIRS[name].y));
-test('a dash moves an actor 1.6 times as far per step',()=>{
+test('a dash bursts to peak speed on its first step',()=>{
   const plain=playing(),dashing=playing();
   for(const s of [plain,dashing])s.actors[0].queued=openDirection(s.actors[0]);
   dashing.actors[0].dashRequested=true;
   step(plain,1/60);const events=step(dashing,1/60);
   assert.ok(events.includes('dash'));
-  assert.ok(Math.abs(dashing.actors[0].progress/plain.actors[0].progress-1.6)<1e-9);
+  assert.ok(Math.abs(dashing.actors[0].progress/plain.actors[0].progress-DASH_BOOST)<1e-9);
 });
 test('the collector can dash again 8 seconds after a dash ends',()=>{
   const s=playing(),dashes=[];
@@ -162,12 +162,12 @@ test('one lobby invitation and device controller can use any gallery character a
 test('photo booth reports exhausted API credits accurately',async()=>{resetGenerationRateLimits();const form=new FormData();form.append('photo',new Blob(['photo'],{type:'image/jpeg'}),'player.jpg');form.append('name','Mina');const request=new Request('https://game.test/api/characters/generate',{method:'POST',headers:{origin:'https://game.test','cf-connecting-ip':'192.0.2.21'},body:form}),response=await handleCharacterApi(request,{OPENAI_API_KEY:'test-key'},{store:new Map(),fetchImpl:async()=>new Response(JSON.stringify({error:{type:'insufficient_quota',code:'credit_balance_exhausted'}}),{status:429,headers:{'content-type':'application/json'}})});assert.equal(response.status,503);assert.match((await response.json()).error,/no API credits/);});
 test('static routing serves booth, pass and join directory indexes',()=>{const assets={'/index.html':{},'/booth/index.html':{},'/booth-display/index.html':{},'/booth-camera/index.html':{},'/pass/index.html':{},'/join/index.html':{},'/booth/booth.css':{}};assert.deepEqual(resolveStaticRoute('/',assets),{pathname:'/index.html'});for(const route of ['booth','booth-display','booth-camera','pass','join']){assert.deepEqual(resolveStaticRoute(`/${route}/`,assets),{pathname:`/${route}/index.html`});assert.deepEqual(resolveStaticRoute(`/${route}`,assets),{redirect:`/${route}/`});}assert.deepEqual(resolveStaticRoute('/booth/booth.css',assets),{pathname:'/booth/booth.css'});assert.equal(resolveStaticRoute('/missing',assets),null);});
 test('Vercel exposes explicit functions for every nested API route',()=>{const routes=['api/booth-sessions.mjs','api/booth-sessions/[id].mjs','api/booth-sessions/[id]/[action].mjs','api/character-jobs.mjs','api/character-jobs/[id].mjs','api/characters.mjs','api/characters/generate.mjs','api/characters/[id]/image.mjs','api/characters/[id]/pass.mjs','api/lobbies.mjs','api/lobbies/[id].mjs','api/lobbies/[id]/slots/[slot]/[action].mjs'];for(const route of routes)assert.ok(fs.existsSync(new URL(`./${route}`,import.meta.url)),`${route} is missing`);assert.ok(fs.existsSync(new URL('./api/_runtime.mjs',import.meta.url)));assert.equal(fs.existsSync(new URL('./api/[...path].mjs',import.meta.url)),false);const config=JSON.parse(fs.readFileSync(new URL('./vercel.json',import.meta.url),'utf8'));assert.equal(config.functions['api/**/*.mjs'].maxDuration,60);assert.equal(config.functions['api/characters/generate.mjs'].maxDuration,300);assert.equal(config.functions['api/character-jobs.mjs'].maxDuration,300);});
-test('browser code and styles revalidate after deployments',()=>{assert.equal(cacheControlFor('/index.html'),'no-cache');assert.equal(cacheControlFor('/app.mjs'),'no-cache');assert.equal(cacheControlFor('/animation-worker.js'),'no-cache');assert.equal(cacheControlFor('/style.css'),'no-cache');assert.equal(cacheControlFor('/assets/adventurer.png'),'public, max-age=3600');const html=fs.readFileSync(new URL('./dist/index.html',import.meta.url),'utf8');assert.match(html,/style\.css\?v=dash-1/);assert.match(html,/app\.mjs\?v=dash-2/);assert.match(html,/assets\/yep-event-logo\.webp/);});
+test('browser code and styles revalidate after deployments',()=>{assert.equal(cacheControlFor('/index.html'),'no-cache');assert.equal(cacheControlFor('/app.mjs'),'no-cache');assert.equal(cacheControlFor('/animation-worker.js'),'no-cache');assert.equal(cacheControlFor('/style.css'),'no-cache');assert.equal(cacheControlFor('/assets/adventurer.png'),'public, max-age=3600');const html=fs.readFileSync(new URL('./dist/index.html',import.meta.url),'utf8');assert.match(html,/style\.css\?v=dash-1/);assert.match(html,/app\.mjs\?v=burst-1/);assert.match(html,/assets\/yep-event-logo\.webp/);});
 test('shared lobby QR uses exact high-contrast modules sized for camera scanning',()=>{const qr=fs.readFileSync(new URL('./dist/qr.mjs',import.meta.url),'utf8'),app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');assert.match(qr,/qrcode\(0,'L'\)/);assert.match(qr,/cell=4,size=total\*cell/);assert.match(qr,/fillRect\(\(column\+quiet\)\*cell,\(row\+quiet\)\*cell,cell,cell\)/);assert.match(app,/dark:'#070914',light:'#ffffff'/);});
 test('lobby controls reconnect instead of silently ignoring an AI click',()=>{const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');assert.match(app,/if\(!lobbySession&&!await ensureLobby\(\)\)throw new Error/);assert.match(app,/lobbyRetryTimer=setTimeout\(\(\)=>ensureLobby\(\),2500\)/);});
 test('a remote character reclaiming Player 1 is restored as a human player',()=>{const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');assert.match(app,/if\(slot\.character&&\(previousStatus!==['"]joined['"]\|\|player\.control===['"]ai['"]\)\)assignControl\(index\)/);assert.doesNotMatch(app,/if\(index>0&&\(previousStatus/);});
 test('lobby shows player numbers and fixed character names without role subtitles',()=>{const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8'),html=fs.readFileSync(new URL('./dist/index.html',import.meta.url),'utf8');assert.match(app,/<strong>PLAYER \$\{index\+1\}<\/strong>/);assert.match(app,/characterLabel\(playerAsset\(index\)\)/);assert.match(app,/identityAsset\(players,index\)/);assert.doesNotMatch(app,/COIN COLLECTOR|AI PURSUER|<small>\$\{role\}<\/small>/);assert.doesNotMatch(html,/booth-link|Open photo booth|Choose any available player slot/);assert.match(html,/SCAN TO<br>JOIN LOBBY/);});
-test('join empty state opens the shared character lobby instead of the photo booth',()=>{const html=fs.readFileSync(new URL('./dist/join/index.html',import.meta.url),'utf8'),join=fs.readFileSync(new URL('./dist/join/join.mjs',import.meta.url),'utf8');assert.doesNotMatch(html,/href="\.\.\/booth\/"|Create a character/);assert.match(html,/id="browseCharacters"/);assert.match(html,/Open character lobby/);assert.match(html,/handoff\.css\?v=gallery-3/);assert.match(html,/join\.mjs\?v=design-1/);assert.match(join,/\$\('browseCharacters'\)\.onclick=openCharacterLibrary/);assert.match(join,/await loadCharacters\(\);\$\('characterLibrary'\)\.showModal\(\)/);});
+test('join empty state opens the shared character lobby instead of the photo booth',()=>{const html=fs.readFileSync(new URL('./dist/join/index.html',import.meta.url),'utf8'),join=fs.readFileSync(new URL('./dist/join/join.mjs',import.meta.url),'utf8');assert.doesNotMatch(html,/href="\.\.\/booth\/"|Create a character/);assert.match(html,/id="browseCharacters"/);assert.match(html,/Open character lobby/);assert.match(html,/handoff\.css\?v=gallery-3/);assert.match(html,/join\.mjs\?v=burst-1/);assert.match(join,/\$\('browseCharacters'\)\.onclick=openCharacterLibrary/);assert.match(join,/await loadCharacters\(\);\$\('characterLibrary'\)\.showModal\(\)/);});
 test('join page changes slots through quadrants without a redundant change button',()=>{const html=fs.readFileSync(new URL('./dist/join/index.html',import.meta.url),'utf8'),join=fs.readFileSync(new URL('./dist/join/join.mjs',import.meta.url),'utf8'),css=fs.readFileSync(new URL('./dist/handoff.css',import.meta.url),'utf8');assert.doesNotMatch(html,/changeSlot|Change slot/);assert.doesNotMatch(join,/changeSlot/);assert.match(css,/\.slot-picker-actions\{display:grid;grid-template-columns:1fr;/);});
 test('game shell uses a fullscreen matchmaking dialog without the removed page chrome',()=>{const html=fs.readFileSync(new URL('./dist/index.html',import.meta.url),'utf8');assert.match(html,/id="lobbyDialog"/);assert.match(html,/Ecopiana Year End Party matchmaking/);assert.match(html,/class="lobby-grid"/);assert.match(html,/class="player-rail/);assert.doesNotMatch(html,/class="topbar"/);assert.doesNotMatch(html,/class="heading"/);assert.doesNotMatch(html,/class="bottom-row"/);});
 test('game HUD shows gold scores and final results use a vertically centered framed panel',()=>{const html=fs.readFileSync(new URL('./dist/index.html',import.meta.url),'utf8'),app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8'),css=fs.readFileSync(new URL('./dist/style.css',import.meta.url),'utf8');assert.equal((html.match(/class="hud-score"/g)||[]).length,4);assert.match(html,/id="podiumScreen"/);assert.match(app,/GAME_ROUNDS/);assert.match(app,/podium-stage/);assert.match(app,/podium-top-three/);assert.match(app,/podium-fourth/);assert.match(css,/\.podium-results\{[^}]*place-items:center/);assert.match(css,/\.podium-top-three\{[^}]*width:min\(820px/);assert.match(css,/width:min\(1580px/);assert.match(css,/celestial-podium-outer-frame-v1\.png/);assert.doesNotMatch(css,/celestial-podium-card-frame-v1\.png/);assert.match(css,/\.podium-stage\{[^}]*flex-direction:column/);assert.match(css,/\.podium-fourth\{[^}]*flex-direction:row/);assert.doesNotMatch(css,/\.podium-fourth\{[^}]*position:absolute/);assert.match(css,/\.podium-fourth\{[^}]*grayscale\(1\)/);assert.ok(fs.existsSync(new URL('./dist/assets/celestial-podium-outer-frame-v1.png',import.meta.url)));assert.doesNotMatch(app,/Most gold after every player took one turn as collector/);});
@@ -234,6 +234,27 @@ test('round results say who caught whom and what everyone earned',async()=>{
     {index:1,name:'Bob',action:'Caught Mina',earned:15,total:45,collector:false},
     {index:2,name:'Zed',action:'No catch',earned:0,total:0,collector:false},
     {index:3,name:'Ada',action:'No catch',earned:0,total:15,collector:false}]);
+});
+test('a dash eases from its peak back to normal speed',()=>{
+  assert.equal(DASH_BOOST,3.5);assert.equal(DASH_TIME,.7);
+  const a={dashTime:0};assert.equal(dashSpeedFactor(a),1);
+  a.dashTime=DASH_TIME;assert.equal(dashSpeedFactor(a),DASH_BOOST);
+  a.dashTime=DASH_TIME/2;assert.ok(Math.abs(dashSpeedFactor(a)-(1+DASH_BOOST)/2)<1e-9);
+  const s=playing(),c=s.actors[0];c.dashRequested=true;step(s,1/60);const early=dashSpeedFactor(c);for(let i=0;i<20;i++)step(s,1/60);assert.ok(dashSpeedFactor(c)<early);
+});
+test('Start on a gamepad is button 9 only',()=>{
+  const pad=pressed=>({axes:[0,0],buttons:Array.from({length:10},(_,i)=>({pressed:i===pressed}))});
+  assert.equal(gamepadStart(pad(9)),true);for(const i of [0,1,3,8,-1])assert.equal(gamepadStart(pad(i)),false);
+});
+test('Start toggles ready for the joined player on that pad, one press at a time',()=>{
+  const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/if\(held&&!startHeld\[player\.control\]\)setReady\(index,!player\.ready\)/);
+  assert.match(app,/player\.slotStatus!=='joined'\|\|!player\.control\.startsWith\('pad:'\)/);
+});
+test('a dash plays a whoosh and draws afterimages and a burst puff',()=>{
+  const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8'),render=fs.readFileSync(new URL('./dist/render.mjs',import.meta.url),'utf8');
+  assert.match(app,/if\(kind==='dash'\)return whoosh\(\)/);assert.match(app,/createBufferSource/);assert.doesNotMatch(app,/drawDashTrails/);
+  assert.match(render,/function drawAfterimages/);assert.match(render,/function drawPuffs/);
 });
 test('any face button requests a dash; Select and Start do not',()=>{
   const pad=pressed=>({axes:[0,0],buttons:Array.from({length:10},(_,i)=>({pressed:i===pressed}))});

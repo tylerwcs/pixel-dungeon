@@ -2,19 +2,21 @@ export function lobbyInvite(value,origin=location.origin){
   try{const url=new URL(value);if(url.origin!==origin||!['/join','/join/'].includes(url.pathname)||!/^https?:$/.test(url.protocol))return null;const lobby=url.searchParams.get('lobby'),token=url.searchParams.get('token');if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(lobby||'')||!/^[A-Za-z0-9_-]{20,128}$/.test(token||''))return null;return `${origin}/join/?lobby=${encodeURIComponent(lobby)}&token=${encodeURIComponent(token)}`;}catch{return null;}
 }
 
-export function mountLobbyScanner(dialog,onScan){
-  dialog.innerHTML='<div class="scanner-heading"><h2>Scan the lobby QR</h2><button class="close-button" type="button" aria-label="Close scanner">×</button></div><p>Point your camera at the QR on the game screen.</p><video playsinline muted aria-label="Lobby QR camera preview" hidden></video><button class="primary-button scanner-start" type="button">Open camera</button><p class="scanner-status" role="status"></p><label class="scanner-upload">Choose a QR image<input type="file" accept="image/jpeg,image/png,image/webp"></label><details><summary>Or paste a lobby link</summary><form class="scanner-link"><label>Lobby invitation URL<input type="url" required placeholder="Paste the game screen’s lobby link"></label><button class="secondary-button" type="submit">Open lobby</button></form></details>';
-  const video=dialog.querySelector('video'),status=dialog.querySelector('.scanner-status'),start=dialog.querySelector('.scanner-start'),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});let stream=null,timer=null,session=0,decoder;
+// The viewfinder lives in the page; it pauses while the tab is hidden and resumes when it returns.
+export function mountLobbyScanner(container,onScan){
+  container.innerHTML='<div class="scanner-view"><video playsinline muted aria-label="Lobby QR camera preview" hidden></video><span class="scanner-frame" aria-hidden="true"></span><button class="secondary-button scanner-start" type="button" hidden>Turn on camera</button></div><p class="scanner-status" role="status"></p>';
+  const video=container.querySelector('video'),status=container.querySelector('.scanner-status'),start=container.querySelector('.scanner-start'),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});let stream=null,timer=null,session=0,active=false,decoder;
   const decode=async image=>{decoder||=(await import('./vendor/jsqr.mjs')).default;const width=image.videoWidth||image.naturalWidth,height=image.videoHeight||image.naturalHeight,scale=Math.min(1,800/Math.max(width,height));if(!width||!height)return null;canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);ctx.drawImage(image,0,0,canvas.width,canvas.height);return decoder(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height,{inversionAttempts:'dontInvert'})?.data;};
-  function stop(){session++;clearTimeout(timer);stream?.getTracks().forEach(track=>track.stop());stream=null;video.srcObject=null;video.hidden=true;start.disabled=false;start.hidden=false;}
-  function accept(text){const url=lobbyInvite(text);if(!url){status.textContent='That is not a lobby QR for this event. Scan the code on the game screen.';return false;}stop();dialog.close();onScan(url);return true;}
-  async function scan(current){if(current!==session||!dialog.open)return;try{if(video.readyState>=2){const text=await decode(video);if(current!==session)return;if(text&&accept(text))return;}}catch{status.textContent='Could not read the camera. Try choosing a QR image below.';stop();return;}timer=setTimeout(()=>scan(current),180);}
-  start.onclick=async()=>{
-    stop();const current=session;start.disabled=true;status.textContent='Opening camera…';
-    try{if(!navigator.mediaDevices?.getUserMedia)throw new Error('unavailable');const next=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});if(current!==session||!dialog.open){next.getTracks().forEach(track=>track.stop());return;}stream=next;video.srcObject=stream;video.hidden=false;await video.play();if(current!==session)return;start.hidden=true;status.textContent='Hold the lobby QR inside the camera view.';scan(current);}catch{if(current===session){stop();status.textContent='Allow camera access to scan, or choose a QR image / paste the lobby link below.';}}
-  };
-  dialog.querySelector('input[type=file]').onchange=async event=>{const file=event.target.files[0];if(!file)return;stop();const current=session;status.textContent='Reading QR image…';const image=new Image(),url=URL.createObjectURL(file);try{image.src=url;await image.decode();const text=await decode(image);if(current!==session||!dialog.open)return;if(text)accept(text);else status.textContent='No QR found. Try a clearer image of the game screen’s lobby QR.';}catch{status.textContent='This QR image could not be read.';}finally{URL.revokeObjectURL(url);event.target.value='';}};
-  dialog.querySelector('.scanner-link').onsubmit=event=>{event.preventDefault();accept(dialog.querySelector('input[type=url]').value.trim());};
-  dialog.querySelector('.close-button').onclick=()=>dialog.close();dialog.addEventListener('close',stop);dialog.addEventListener('cancel',stop);window.addEventListener('pagehide',stop);document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
-  return ()=>{status.textContent='';dialog.showModal();};
+  function release(){session++;clearTimeout(timer);stream?.getTracks().forEach(track=>track.stop());stream=null;video.srcObject=null;video.hidden=true;}
+  function stop(){active=false;release();}
+  function accept(text){const url=lobbyInvite(text);if(!url){status.textContent='That is not a lobby QR for this event.';return false;}stop();onScan(url);return true;}
+  async function scan(current){if(current!==session)return;try{if(video.readyState>=2){const text=await decode(video);if(current!==session)return;if(text&&accept(text))return;}}catch{release();start.hidden=false;status.textContent='Could not read the camera. Tap to try again.';return;}timer=setTimeout(()=>scan(current),180);}
+  async function open(){
+    release();active=true;const current=session;start.hidden=true;status.textContent='Opening camera…';
+    try{if(!navigator.mediaDevices?.getUserMedia)throw new Error('unavailable');const next=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});if(current!==session||!active){next.getTracks().forEach(track=>track.stop());return;}stream=next;video.srcObject=stream;video.hidden=false;await video.play();if(current!==session)return;status.textContent='Point at the lobby QR on the game screen.';scan(current);}catch{if(current===session){release();start.hidden=false;status.textContent='Allow camera access to scan the lobby QR.';}}
+  }
+  start.onclick=open;
+  window.addEventListener('pagehide',stop);
+  document.addEventListener('visibilitychange',()=>{if(!active)return;if(document.hidden)release();else if(!stream)open();});
+  return {start:open,stop};
 }

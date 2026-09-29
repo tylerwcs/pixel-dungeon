@@ -1,9 +1,11 @@
-import {mountLobbyScanner} from '../lobby-scanner.mjs?v=queue-1';
+import {mountLobbyScanner} from '../lobby-scanner.mjs?v=queue-3';
 import {readPass} from '../job-client.mjs?v=party-1';
 import {loadCharacterAsset,drawGreeting} from '../render.mjs?v=burst-1';
 const $=id=>document.getElementById(id),passKey='pixel-dungeon-character-pass',guestKey='pixel-dungeon-guest-controller',params=new URLSearchParams(location.search);
 const lobby=params.get('lobby'),lobbyToken=params.get('token'),slotKey=`pixel-dungeon-slot-${lobby||'none'}`,colors=['#bade80','#c7a7ff','#ff9f82','#84e8ff'];
-let pass,characters=[],character,currentLobby,selectedSlot=Number(localStorage.getItem(slotKey)||0),pollPending=false;
+// Written by the character page so guests can return to it for their videos, and back here from it.
+const characterPageKey='pixel-dungeon-character-page',lobbyReturnKey='pixel-dungeon-lobby-return';
+let pass,characters=[],character,currentLobby,selectedSlot=Number(localStorage.getItem(slotKey)||0),pollPending=false,pollTimer,lobbyClosed=false,scanner;
 
 function status(message,error=false){$('joinStatus').textContent=message;$('joinStatus').classList.toggle('error',error);}
 function escapeHTML(value){return String(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));}
@@ -43,7 +45,8 @@ function renderSlots(){
 }
 
 async function loadCharacters(){const response=await fetch('/api/characters',{cache:'no-store'}),data=await response.json();if(!response.ok)throw new Error(data.error||'The character library could not be loaded.');characters=Array.isArray(data.characters)?data.characters:[];loadPass();if(pass?.id&&!characters.some(item=>item.id===pass.id)){const response=await fetch(`/api/characters/${encodeURIComponent(pass.id)}/pass`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({claimToken:pass.claimToken})});if(response.ok)characters.unshift((await response.json()).character);}character=characters.find(item=>item.id===pass?.id)||characters[0]||null;renderCharacter();}
-async function refreshLobby(showErrors=false){if(!validInvite()||pollPending)return;pollPending=true;try{const response=await fetch(`/api/lobbies/${encodeURIComponent(lobby)}`,{cache:'no-store'}),data=await response.json();if(!response.ok)throw new Error(data.error||'The lobby could not be loaded.');currentLobby=data.lobby;renderSlots();}catch(error){if(showErrors)status(error.message,true);}finally{pollPending=false;}}
+async function refreshLobby(showErrors=false){if(!validInvite()||pollPending||lobbyClosed)return;pollPending=true;try{const response=await fetch(`/api/lobbies/${encodeURIComponent(lobby)}`,{cache:'no-store'}),data=await response.json();if(!response.ok)throw Object.assign(new Error(data.error||'The lobby could not be loaded.'),{status:response.status});currentLobby=data.lobby;renderSlots();}catch(error){if([404,410].includes(error.status))closeLobby();else if(showErrors)status(error.message,true);}finally{pollPending=false;}}
+function closeLobby(){lobbyClosed=true;clearInterval(pollTimer);try{sessionStorage.removeItem(lobbyReturnKey);}catch{}$('readySlot').hidden=true;$('myVideos').hidden=true;showScanner();status('That lobby has closed. Scan the lobby QR on the game screen.',true);}
 
 async function claim(slot){if(!character)return;try{status(`Moving ${character.name} to Player ${slot}…`);const response=await fetch(`/api/lobbies/${encodeURIComponent(lobby)}/slots/${slot}/claim`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({lobbyToken,characterId:character.id,guestToken:guestToken()})}),data=await response.json();if(!response.ok)throw new Error(data.error||'That slot could not be joined.');currentLobby=data.lobby;selectedSlot=slot;localStorage.setItem(slotKey,String(slot));renderSlots();status(`${character.name} is now Player ${slot}.`);}catch(error){status(error.message,true);await refreshLobby();}}
 
@@ -52,12 +55,19 @@ async function openCharacterLibrary(){try{status('Refreshing the shared characte
 $('chooseCharacter').onclick=openCharacterLibrary;
 $('browseCharacters').onclick=openCharacterLibrary;
 
-async function load(){
-  const invited=validInvite();$('slotGrid').hidden=!invited;$('scanIntro').hidden=invited;
-  if(!invited){$('slotPickerTitle').textContent='Join the dungeon';$('joinCopy').textContent='Scan the shared lobby QR from the game screen.';}
-  try{await loadCharacters();}catch(error){status(error.message,true);$('noCharacters').hidden=false;}
-  if(!invited){$('scanIntro').textContent=pass?.id?'Your character pass is ready. Scan the lobby QR on the game screen to choose a player slot.':'Scan the game screen’s lobby QR, then choose a character and player slot.';status('Ready to scan a lobby QR.');return;}
-  await refreshLobby(true);setInterval(()=>refreshLobby(),1500);
+function showScanner(){$('slotPickerTitle').textContent='Join the dungeon';$('joinCopy').textContent='Scan the lobby QR on the game screen.';$('slotGrid').hidden=true;$('lobbyScanner').hidden=false;scanner||=mountLobbyScanner($('lobbyScanner'),url=>location.assign(url));scanner.start();}
+function showVideosLink(){
+  if(!loadPass())return;let url=`/pass/?character=${encodeURIComponent(pass.id)}`;
+  try{const saved=JSON.parse(localStorage.getItem(characterPageKey)||'null'),page=saved?.id===pass.id&&new URL(saved.url,location.href);if(page&&page.origin===location.origin&&page.pathname.startsWith('/character'))url=page.href;}catch{}
+  $('myVideos').href=url;$('myVideos').hidden=false;
 }
-$('scanLobby').onclick=mountLobbyScanner($('lobbyScanner'),url=>location.assign(url));
+
+async function load(){
+  const invited=validInvite();$('slotGrid').hidden=!invited;
+  if(!invited)showScanner();
+  try{await loadCharacters();}catch(error){status(error.message,true);$('noCharacters').hidden=false;}
+  if(!invited)return;
+  try{sessionStorage.setItem(lobbyReturnKey,location.href);}catch{}
+  showVideosLink();await refreshLobby(true);if(!lobbyClosed)pollTimer=setInterval(()=>refreshLobby(),1500);
+}
 load();

@@ -6,7 +6,7 @@
   <title>Choose Your Slot · Pixel Dungeon Chase</title>
   <link rel="stylesheet" href="/style.css?v=celestial-10">
   <link rel="stylesheet" href="/handoff.css?v=gallery-3">
-  <link rel="stylesheet" href="/character.css?v=party-1">
+  <link rel="stylesheet" href="/character.css?v=download-1">
 </head>
 <body class="join-page">
   <main class="slot-picker-shell">
@@ -16,8 +16,7 @@
         <h1 id="slotPickerTitle">Choose your slot</h1>
         <p id="joinCopy">Tap an available quadrant to join the game.</p>
       </header>
-      <div id="scanIntro" class="scan-intro" hidden>Your character pass is ready. Scan the lobby QR on the game screen to choose a player slot.</div>
-      <button id="scanLobby" class="secondary-button scan-lobby-button" type="button">Scan lobby QR</button>
+      <section id="lobbyScanner" class="lobby-scanner" aria-label="Scan the lobby QR" hidden></section>
       <div id="slotGrid" class="slot-grid" aria-live="polite"></div>
       <section id="selectedCharacter" class="guest-character" hidden>
         <canvas id="joinImage" class="guest-character-sprite" width="220" height="220" aria-label="Selected pixel character"></canvas>
@@ -30,6 +29,7 @@
       </section>
       <div class="slot-picker-actions">
         <button id="readySlot" class="primary-button" type="button" hidden>I’m ready <span>✓</span></button>
+        <a id="myVideos" class="secondary-button videos-link" hidden>Download my videos</a>
       </div>
       <p id="joinStatus" class="handoff-status" role="status"></p>
     </section>
@@ -41,7 +41,6 @@
     <h2 id="characterLibraryTitle">Choose your character</h2>
     <div id="characterGrid" class="character-grid"></div>
   </dialog>
-  <dialog id="lobbyScanner" class="scanner-dialog" aria-label="Scan a lobby QR"></dialog>
-  <script type="module" src="/join/join.mjs?v=party-1"></script>
+  <script type="module" src="/join/join.mjs?v=scanner-2"></script>
 </body>
 </html>

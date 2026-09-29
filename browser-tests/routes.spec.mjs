@@ -25,7 +25,7 @@ for(const trailing of ['', '/'])test(`event pages load their styling and scripts
     }else if(route==='pass'){
       await expect(page.locator('#passLoading')).toBeHidden();await expect(page.locator('#passStatus')).toContainText('Scan your personal QR');
     }else{
-      await expect(page.locator('#slotPickerTitle')).toHaveText('Join the dungeon');await expect(page.locator('#scanLobby')).toBeVisible();
+      await expect(page.locator('#slotPickerTitle')).toHaveText('Join the dungeon');await expect(page.locator('#lobbyScanner')).toBeVisible();
     }
   }
   expect(broken).toEqual([]);

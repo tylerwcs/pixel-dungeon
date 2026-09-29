@@ -18,15 +18,15 @@ test('Party poses advance at 6 FPS, remain front facing, and reduced motion hold
 });
 
 test('three share cards fit desktop and phone, while legacy and failed party assets stay usable',async({page},testInfo)=>{
- await page.route('**/party-view',route=>route.fulfill({contentType:'text/html',body:'<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css?v=auto-ready-1"><link rel="stylesheet" href="/character.css?v=party-1"><main class="character-shell"><section class="character-panel"><h1>Meet Party guest</h1><div id="view" class="animation-previews"></div></section></main>'}));
+ await page.route('**/party-view',route=>route.fulfill({contentType:'text/html',body:'<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css?v=auto-ready-1"><link rel="stylesheet" href="/character.css?v=download-1"><main class="character-shell"><section class="character-panel"><h1>Meet Party guest</h1><div id="view" class="animation-previews"></div></section></main>'}));
  await page.goto('/party-view');
  const mount=async(mode)=>page.evaluate(async mode=>{
-  window.dispose?.();const {mountCharacterView}=await import('/character-view.mjs?v=party-1');
+  window.dispose?.();const {mountCharacterView}=await import('/character-view.mjs?v=download-1');
   const motion={cols:4,rows:4,fps:6,layout:'directional'};
   window.dispose=await mountCharacterView(document.querySelector('#view'),{name:'Party guest',imageUrl:'/assets/adventurer.png',...motion,fps:8,wave:{imageUrl:'/assets/monster.png',...motion},...(mode==='legacy'?{}:{party:{imageUrl:mode==='failed'?'/missing-party.png':'/assets/adventurer.png',...motion}})});
  },mode);
  await mount('ready');await expect(page.locator('.animation-card')).toHaveCount(3);
  for(const width of [1440,390]){await page.setViewportSize({width,height:900});await expect(page.getByRole('heading',{name:'Party time!'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);await testInfo.attach('party-cards-'+width,{body:await page.screenshot({fullPage:true}),contentType:'image/png'});}
- await mount('legacy');await expect(page.locator('.animation-card')).toHaveCount(2);await expect(page.getByRole('button',{name:/with event frame/}).first()).toBeEnabled();
+ await mount('legacy');await expect(page.locator('.animation-card')).toHaveCount(2);await expect(page.getByRole('button',{name:'Download',exact:true}).first()).toBeEnabled();
  await mount('failed');const party=page.locator('[data-animation=party]').first();await expect(party.getByRole('button')).toBeDisabled();await expect(party.getByRole('status')).toContainText('Refresh');await expect(page.locator('[data-animation=walk]').first().getByRole('button')).toBeEnabled();
 });

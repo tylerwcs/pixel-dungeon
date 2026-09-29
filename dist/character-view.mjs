@@ -18,28 +18,28 @@ export async function mountCharacterView(container,character){
     {
       const background='framed';
       const button=document.createElement('button');button.type='button';button.className='download-button share-primary';button.dataset.background=background;
-      const label=()=>`${supportsShare()?'Share':'Download'} with event frame`;
-      button.textContent=label();button.disabled=!item.available;item.buttons.push(button);actions.append(button);
+      const label='Download';
+      button.textContent=label;button.disabled=!item.available;item.buttons.push(button);actions.append(button);
       button.onclick=async()=>{
         if(exporting||disposed)return;exporting=true;cards.forEach(c=>c.buttons.forEach(b=>b.disabled=true));
         try{
           let file=item.files.get(background);
           if(!file){
-            button.textContent='Preparing…';status.textContent='Preparing your video…';
-            const blob=await createAnimationVideo(asset,animation,progress=>{if(!disposed){button.textContent=`Preparing ${progress}%`;status.textContent=`Preparing your video · ${progress}%`;}},{name:character.name,background});
+            button.textContent='Preparing…';status.textContent='';
+            const blob=await createAnimationVideo(asset,animation,progress=>{if(!disposed)button.textContent=`Preparing ${progress}%`;},{name:character.name,background});
             if(disposed)return;
             const filename=`${character.name.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'character'}-${animation}-${background}.mp4`;
             file=new File([blob],filename,{type:'video/mp4'});item.files.set(background,file);
           }
           if(supportsShare()&&navigator.canShare({files:[file]})){
             // Preparation can outlast the browser's user gesture. A second tap uses the cached File immediately.
-            if(navigator.userActivation&&!navigator.userActivation.isActive){status.textContent=`Ready. Tap “${label()}” to share your video.`;return;}
-            await navigator.share({files:[file],title:`${character.name} · Ecopialand`});status.textContent='Your video is ready to share again.';
+            if(navigator.userActivation&&!navigator.userActivation.isActive){status.textContent='Your video is ready. Tap Download again to save it.';return;}
+            await navigator.share({files:[file],title:`${character.name} · Ecopialand`});status.textContent='';
           }else{
-            const link=document.createElement('a'),url=URL.createObjectURL(file);urls.push(url);link.href=url;link.download=file.name;document.body.append(link);link.click();link.remove();status.textContent='Your video has been downloaded.';
+            const link=document.createElement('a'),url=URL.createObjectURL(file);urls.push(url);link.href=url;link.download=file.name;document.body.append(link);link.click();link.remove();status.textContent='';
           }
-        }catch(error){status.textContent=error.name==='AbortError'?'Ready whenever you want to share.':error.name==='NotAllowedError'?`Tap “${label()}” again to open sharing.`:error.message||'Sharing did not open. Please try again.';}
-        finally{exporting=false;button.textContent=label();cards.forEach(c=>c.buttons.forEach(b=>b.disabled=!c.available));}
+        }catch(error){status.textContent=error.name==='AbortError'?'':error.name==='NotAllowedError'?'Tap Download again to save your video.':error.message||'The download did not start. Please try again.';}
+        finally{exporting=false;button.textContent=label;cards.forEach(c=>c.buttons.forEach(b=>b.disabled=!c.available));}
       };
     }
     if(!item.available)status.textContent=animation==='party'?'The party animation could not load. Refresh to try again.':'A wave is not available for this character.';

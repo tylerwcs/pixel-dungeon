@@ -304,3 +304,4 @@ body,.lobby-dialog{background-color:#030719;background-image:linear-gradient(180
 .hud-card .hud-dash{--charge:1;font-family:var(--font-pixel);font-size:clamp(7px,.7vw,10px);line-height:1.45;white-space:nowrap;color:#f4efff;background:linear-gradient(90deg,color-mix(in srgb,var(--player) 38%,#0a102e) calc(var(--charge)*100%),#0a102e 0)}
 .hud-dash.is-dashing{color:#070914;background:var(--player);box-shadow:0 0 18px color-mix(in srgb,var(--player) 75%,transparent)}
 .hud-dash.is-spent{color:#77718f}
+.podium-actions{flex-direction:column;align-items:center;gap:10px}.podium-actions .podium-hint{font:400 8px/1.6 var(--font-pixel);letter-spacing:1px;color:#bbb4d0}

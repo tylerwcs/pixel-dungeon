@@ -3,7 +3,7 @@ import {expect,test} from '@playwright/test';
 test('Party poses advance at 6 FPS, remain front facing, and reduced motion holds still',async({page})=>{
  await page.goto('/');
  const drawn=await page.evaluate(async()=>{
-  const {loadImage}=await import('/render.mjs?v=burst-1'),{drawVideoCharacter}=await import('/animation-export.mjs?v=party-1');
+  const {loadImage}=await import('/render.mjs?v=walk-1'),{drawVideoCharacter}=await import('/animation-export.mjs?v=walk-1');
   await loadImage('/assets/adventurer.png');
   const party={src:'/assets/adventurer.png',cols:4,rows:4,fps:6,layout:'directional',anchor:'cell'},asset={party};
   const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;const ctx=canvas.getContext('2d'),calls=[],draw=ctx.drawImage.bind(ctx);
@@ -21,7 +21,7 @@ test('three share cards fit desktop and phone, while legacy and failed party ass
  await page.route('**/party-view',route=>route.fulfill({contentType:'text/html',body:'<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css?v=auto-ready-1"><link rel="stylesheet" href="/character.css?v=icon-1"><main class="character-shell"><section class="character-panel"><h1>Meet Party guest</h1><div id="view" class="animation-previews"></div></section></main>'}));
  await page.goto('/party-view');
  const mount=async(mode)=>page.evaluate(async mode=>{
-  window.dispose?.();const {mountCharacterView}=await import('/character-view.mjs?v=icon-1');
+  window.dispose?.();const {mountCharacterView}=await import('/character-view.mjs?v=walk-1');
   const motion={cols:4,rows:4,fps:6,layout:'directional'};
   window.dispose=await mountCharacterView(document.querySelector('#view'),{name:'Party guest',imageUrl:'/assets/adventurer.png',...motion,fps:8,wave:{imageUrl:'/assets/monster.png',...motion},...(mode==='legacy'?{}:{party:{imageUrl:mode==='failed'?'/missing-party.png':'/assets/adventurer.png',...motion}})});
  },mode);

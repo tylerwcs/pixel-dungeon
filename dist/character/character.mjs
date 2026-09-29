@@ -1,5 +1,5 @@
 import {readJob,savePass,stageLabels} from '../job-client.mjs?v=party-1';
-import {mountCharacterView} from '../character-view.mjs?v=icon-1';
+import {mountCharacterView} from '../character-view.mjs?v=walk-1';
 const $=id=>document.getElementById(id),id=new URLSearchParams(location.search).get('job'),token=new URLSearchParams(location.hash.slice(1)).get('access');
 // Shared with the join page: it links back here for the videos, and this page links back to its lobby.
 const characterPageKey='pixel-dungeon-character-page',lobbyReturnKey='pixel-dungeon-lobby-return';

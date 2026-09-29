@@ -1,7 +1,7 @@
-import {loadCharacterAsset,loadImage,cache} from './render.mjs?v=burst-1';
+import {loadCharacterAsset,loadImage,cache} from './render.mjs?v=walk-1';
 // Pixel-drawn download arrow over a tray; crisp edges keep it blocky at any size.
 const downloadIcon='<svg viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M7 1h2v7H7zM4 8h8v1H4zM5 9h6v1H5zM6 10h4v1H6zM7 11h2v1H7zM2 13h12v2H2z"/></svg>';
-import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=party-1';
+import {createAnimationVideo,loadSocialFrame,drawVideoBackground,drawVideoCharacter} from './animation-export.mjs?v=walk-1';
 
 export async function mountCharacterView(container,character){
   const asset=await loadCharacterAsset(character),urls=[],cards=[];let frameId,exporting=false,disposed=false,frame=null;

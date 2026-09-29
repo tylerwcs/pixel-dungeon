@@ -1,5 +1,5 @@
 import {newRound,nextCollector,step,roundScores,rankScores,COLORS,GAME_ROUNDS,CATCH_BONUS} from './engine.mjs';
-import {loadImage,loadCharacterAsset,drawGreeting,drawSprite,defaults,identityAsset,playerNames,createRenderer} from './render.mjs?v=burst-1';
+import {loadImage,loadCharacterAsset,drawGreeting,drawSprite,defaults,identityAsset,playerNames,createRenderer} from './render.mjs?v=walk-1';
 import {roundHeadline,roundRows,dashStatus} from './labels.mjs';
 import {readSettings,writeSettings} from './preferences.mjs';
 import {connectedPads,controlsAvailable,gamepadDirection,controlOrder,controlName,padPressed,gamepadDash,gamepadStart} from './input.mjs?v=burst-1';
@@ -52,8 +52,10 @@ async function applyLobby(serverLobby){
     if(slot.status==='open'){player.control='ai';player.booth=null;player.remoteCharacterId=null;}
     if(slot.status==='ai'){player.control='ai';player.booth=null;player.remoteCharacterId=null;player.ready=true;}
     if(slot.status==='joined'){
-      if(slot.character&&(previousStatus!=='joined'||player.control==='ai'))assignControl(index);
-      if(slot.character&&player.remoteCharacterId!==slot.character.id){try{player.booth=await loadCharacterAsset(slot.character);player.remoteCharacterId=slot.character.id;}catch{toast(`Player ${slot.slot}’s character could not be loaded.`);}}
+      if(previousStatus!=='joined'||player.control==='ai')assignControl(index);
+      // Without a character the slot plays the default adventurer on this screen's controls.
+      if(!slot.character){player.booth=null;player.remoteCharacterId=null;}
+      else if(player.remoteCharacterId!==slot.character.id){try{player.booth=await loadCharacterAsset(slot.character);player.remoteCharacterId=slot.character.id;}catch{toast(`Player ${slot.slot}’s character could not be loaded.`);}}
     }
   }
   if(lobby)state=newRound(players,state.collector,state.round);renderPlayers();
@@ -61,7 +63,17 @@ async function applyLobby(serverLobby){
 async function refreshLobby(){if(!lobby||!lobbySession||lobbyPollPending)return;lobbyPollPending=true;try{const response=await fetch(`/api/lobbies/${lobbySession.id}`,{cache:'no-store'}),data=await response.json();if(!response.ok)throw new Error(data.error);await applyLobby(data.lobby);}catch{}finally{lobbyPollPending=false;}}
 async function updateSlot(index,action,payload){if(!lobbySession&&!await ensureLobby())throw new Error('The lobby is reconnecting. Please try again in a moment.');const response=await fetch(`/api/lobbies/${lobbySession.id}/slots/${index+1}/${action}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload())}),data=await response.json();if(!response.ok)throw new Error(data.error||'The player slot could not be updated.');await applyLobby(data.lobby);}
 async function setAI(index,enabled){try{await updateSlot(index,'ai',()=>({hostToken:lobbySession.hostToken,ai:enabled}));}catch(error){toast(error.message);}}
+async function setDefault(index){try{await updateSlot(index,'default',()=>({hostToken:lobbySession.hostToken}));}catch(error){toast(error.message);}}
 async function setReady(index,ready){try{await updateSlot(index,'ready',()=>({hostToken:lobbySession.hostToken,ready}));}catch(error){toast(error.message);}}
+// Empties every slot for the next group. The first tap arms the button; a second tap within a few seconds clears.
+let clearArmedTimer=null;
+function disarmClear(){clearTimeout(clearArmedTimer);clearArmedTimer=null;$('clearLobby').classList.remove('armed');$('clearLobby').setAttribute('aria-label','Clear all players');}
+async function clearLobby(){
+  if(!clearArmedTimer){$('clearLobby').classList.add('armed');$('clearLobby').setAttribute('aria-label','Tap again to clear all players');clearArmedTimer=setTimeout(disarmClear,4000);return;}
+  disarmClear();$('clearLobby').disabled=true;
+  try{if(!lobbySession&&!await ensureLobby())throw new Error('The lobby is reconnecting. Please try again in a moment.');const response=await fetch(`/api/lobbies/${lobbySession.id}/clear`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hostToken:lobbySession.hostToken})}),data=await response.json();if(!response.ok)throw new Error(data.error||'The lobby could not be cleared.');await applyLobby(data.lobby);toast('All slots are open for the next players.');}
+  catch(error){toast(error.message);}finally{$('clearLobby').disabled=false;}
+}
 async function resetLobbyReadiness(){
  for(let index=0;index<players.length;index+=1){
   if(players[index].slotStatus==='joined')await setReady(index,false);
@@ -73,11 +85,14 @@ function renderPlayers(){
   players.forEach((player,index)=>{
     const ai=player.slotStatus==='ai',open=player.slotStatus==='open';
     const card=document.createElement('article');card.className=`player-card ${index===state.collector?'collector':''} ${ai?'ai':''} ${open?'open':''} ${player.ready?'ready':''}`;card.style.setProperty('--player',COLORS[index]);if(!open&&!ai)card.dataset.control=player.control;
-    const action=ai?`<button class="summary-action reopen-slot" type="button"><span>◆ AI PLAYER</span><small>OPEN THIS SLOT</small></button>`:`<button class="summary-action ai-action" type="button"><span>＋ ADD AI</span><small>${open?'FILL THIS SLOT':'REPLACE PLAYER'}</small></button>`;
+    const defaultPlayer=player.slotStatus==='joined'&&!player.remoteCharacterId;
+    const aiButton=ai?`<button class="summary-action reopen-slot" type="button"><span>◆ AI PLAYER</span><small>OPEN THIS SLOT</small></button>`:`<button class="summary-action ai-action" type="button"><span>＋ ADD AI</span><small>${open?'FILL THIS SLOT':'REPLACE PLAYER'}</small></button>`;
+    const defaultButton=defaultPlayer?`<button class="summary-action reopen-slot" type="button"><span>− REMOVE PLAYER</span><small>OPEN THIS SLOT</small></button>`:`<button class="summary-action default-action" type="button"><span>＋ ADD DEFAULT CHARACTER</span><small>KEYBOARD OR GAMEPAD</small></button>`;
+    const action=`<div class="slot-actions">${aiButton}${defaultButton}</div>`;
     const characterName=open?'OPEN SLOT':characterLabel(playerAsset(index));
     card.innerHTML=`<div class="player-card-head"><span class="player-badge">${index+1}</span></div><div class="player-card-body"><div class="character-tile"><canvas class="portrait" width="220" height="220" aria-label="Player ${index+1} character"></canvas><strong>PLAYER ${index+1}</strong></div><div class="player-summary"><div class="player-info"><strong>${escapeHTML(characterName)}</strong>${!open&&!ai?`<small class="player-control">${player.control==='pending'?'NO CONTROLLER FREE':`${player.control.startsWith('pad:')?'🎮':'⌨'} ${controlName(player.control)}`}</small>`:''}</div>${action}</div></div><button class="ready-button ${player.ready?'ready':''}" type="button">${open?'WAITING TO JOIN':ai?'◆ AI READY':player.ready?'✓ READY':'PRESS READY'}</button>`;
     $('players').append(card);
-    card.querySelectorAll('.ai-action').forEach(button=>button.onclick=()=>setAI(index,true));const reopen=card.querySelector('.reopen-slot');if(reopen)reopen.onclick=()=>setAI(index,false);
+    card.querySelectorAll('.ai-action').forEach(button=>button.onclick=()=>setAI(index,true));card.querySelectorAll('.default-action').forEach(button=>button.onclick=()=>setDefault(index));card.querySelectorAll('.reopen-slot').forEach(button=>button.onclick=()=>setAI(index,false));
     const readyButton=card.querySelector('.ready-button');readyButton.disabled=active||open||ai||player.control==='pending';readyButton.onclick=()=>setReady(index,!player.ready);
     const hud=$(`hud${index}`);if(hud){const collector=index===state.collector;hud.classList.toggle('is-collector',collector);$(`hudName${index}`).textContent=inGameNames[index];$(`hudRole${index}`).textContent=`${collector?'★ COLLECTOR':'PURSUER'}${controlName(player.control)?` · ${controlName(player.control)}`:''}`;hud.dataset.control=player.control;}
   });
@@ -124,7 +139,7 @@ window.addEventListener('blur',()=>pause('The window lost focus. Resume when eve
 function pollPads(){pads=connectedPads(navigator.getGamepads?.());const pressedStart=new Set();for(const gamepad of pads){const control=`pad:${gamepad.index}`,held=gamepadStart(gamepad);if(held&&!startHeld[control])pressedStart.add(control);startHeld[control]=held;}if(lobby&&lobbyDialog.open)players.forEach((player,index)=>{if(player.slotStatus==='joined'&&pressedStart.has(player.control))setReady(index,!player.ready);});else if(!lobby&&state.phase==='result'&&$('podiumScreen').hidden&&[...pressedStart].some(canContinue))$('continue')?.click();else if(!$('podiumScreen').hidden&&pressedStart.size)returnLobby();const signature=pads.map(gamepad=>gamepad.index).join(',');if(signature!==padSignature){padSignature=signature;players.forEach((player,index)=>{if(player.slotStatus==='joined')assignControl(index);});if(!controlsValid())pause('A player’s gamepad disconnected. Reconnect it to resume.');renderPlayers();$('controllerNote').textContent=pads.length?`${pads.length} gamepad${pads.length===1?'':'s'} detected. Press any button to light up its player.`:'Connect a gamepad for each player, then press any button on it.';}const now=performance.now();for(const gamepad of pads)if(padPressed(gamepad))padPings[`pad:${gamepad.index}`]=now+600;document.querySelectorAll('[data-control]').forEach(element=>element.classList.toggle('is-pinged',(padPings[element.dataset.control]||0)>now));if(!lobby&&['playing','countdown'].includes(state.phase))for(const actor of state.actors){if(!actor.control.startsWith('pad:'))continue;const gamepad=pads.find(candidate=>`pad:${candidate.index}`===actor.control);if(!gamepad)continue;const direction=gamepadDirection(gamepad);if(direction)actor.queued=direction;const held=gamepadDash(gamepad);if(held&&!dashHeld[actor.control])actor.dashRequested=true;dashHeld[actor.control]=held;}}
 function updateSound(){$('sound').textContent='♫';$('sound').classList.toggle('is-muted',muted);$('sound').setAttribute('aria-label',muted?'Unmute sound':'Mute sound');$('sound').setAttribute('aria-pressed',String(muted));}
 function toggleSound(){muted=!muted;updateSound();savePreferences();}
-$('sound').onclick=toggleSound;$('lobbyButton').onclick=()=>{if(!lobby)returnLobby();};$('play').onclick=start;$('boardPlay').onclick=openLobby;$('pause').onclick=togglePause;$('lobbyDialog').addEventListener('cancel',event=>{if(lobby)event.preventDefault();});$('help').onclick=()=>{pause();$('helpDialog').showModal();};$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{toast('Full screen is unavailable in this browser view.');}};
+$('sound').onclick=toggleSound;$('clearLobby').onclick=clearLobby;$('lobbyButton').onclick=()=>{if(!lobby)returnLobby();};$('play').onclick=start;$('boardPlay').onclick=openLobby;$('pause').onclick=togglePause;$('lobbyDialog').addEventListener('cancel',event=>{if(lobby)event.preventDefault();});$('help').onclick=()=>{pause();$('helpDialog').showModal();};$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{toast('Full screen is unavailable in this browser view.');}};
 let accumulator=0,last=performance.now();
 function frame(now){
   const delta=Math.min((now-last)/1000,.1);last=now;pollPads();updateAutoStart(now);

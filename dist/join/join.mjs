@@ -1,6 +1,6 @@
 import {mountLobbyScanner} from '../lobby-scanner.mjs?v=queue-3';
 import {readPass} from '../job-client.mjs?v=party-1';
-import {loadCharacterAsset,drawGreeting} from '../render.mjs?v=burst-1';
+import {loadCharacterAsset,drawGreeting} from '../render.mjs?v=walk-1';
 const $=id=>document.getElementById(id),passKey='pixel-dungeon-character-pass',guestKey='pixel-dungeon-guest-controller',params=new URLSearchParams(location.search);
 const lobby=params.get('lobby'),lobbyToken=params.get('token'),slotKey=`pixel-dungeon-slot-${lobby||'none'}`,colors=['#bade80','#c7a7ff','#ff9f82','#84e8ff'];
 // Written by the character page so guests can return to it for their videos, and back here from it.

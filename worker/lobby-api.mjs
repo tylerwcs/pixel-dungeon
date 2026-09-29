@@ -39,6 +39,7 @@ async function updateSlot(storage,id,slotIndex,now,apply){
   }
   return json({error:'The lobby is busy. Please try again.'},409);
 }
+function openSlot(slot){slot.status='open';slot.ready=false;slot.character=null;delete slot.guestHash;}
 
 export async function handleLobbyApi(request,env={},options={}){
   const url=new URL(request.url),storage=storageFor(env,options),now=options.now?.()??Date.now();if(!storage)return json({error:'Lobby session storage is not configured.'},503);
@@ -46,7 +47,12 @@ export async function handleLobbyApi(request,env={},options={}){
   const lobbyMatch=url.pathname.match(/^\/api\/lobbies\/([^/]+)$/);if(lobbyMatch&&request.method==='GET'){
     if(!validId(lobbyMatch[1]))return json({error:'Lobby not found.'},404);const record=await storage.read(lobbyMatch[1]);if(!active(record?.lobby,now))return json({error:'This lobby has expired.'},410);return json({lobby:publicLobby(record.lobby)});
   }
-  const slotMatch=url.pathname.match(/^\/api\/lobbies\/([^/]+)\/slots\/([1-4])\/(claim|ready|ai)$/);if(!slotMatch||request.method!=='POST')return json({error:'Not found.'},404);
+  // Clearing empties every slot so the next group can join with the same QR.
+  const clearMatch=url.pathname.match(/^\/api\/lobbies\/([^/]+)\/clear$/);if(clearMatch&&request.method==='POST'){
+    if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);if(!validId(clearMatch[1]))return json({error:'Lobby not found.'},404);const input=await body(request);if(!input)return json({error:'The request could not be read.'},400);
+    return updateSlot(storage,clearMatch[1],0,now,async lobby=>{if(!await tokenMatches(input.hostToken,lobby.hostHash))return json({error:'Only this game screen can clear the lobby.'},403);lobby.slots.forEach(openSlot);});
+  }
+  const slotMatch=url.pathname.match(/^\/api\/lobbies\/([^/]+)\/slots\/([1-4])\/(claim|ready|ai|default)$/);if(!slotMatch||request.method!=='POST')return json({error:'Not found.'},404);
   if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);
   const [,id,slotValue,action]=slotMatch;if(!validId(id))return json({error:'Lobby not found.'},404);const input=await body(request);if(!input)return json({error:'The request could not be read.'},400);
   if(action==='claim'){
@@ -57,7 +63,7 @@ export async function handleLobbyApi(request,env={},options={}){
       if(!character)return json({error:'That character is no longer available.'},404);
       const previous=lobby.slots.find(candidate=>candidate.guestHash===guestHash);
       if(slot.status==='ai'||(slot.status==='joined'&&slot!==previous))return json({error:'That player slot is already occupied.'},409);
-      if(previous&&previous!==slot){previous.status='open';previous.ready=false;previous.character=null;delete previous.guestHash;}
+      if(previous&&previous!==slot)openSlot(previous);
       slot.status='joined';slot.ready=false;slot.guestHash=guestHash;slot.character=characterRecord(input.characterId,character.name||'Player character',character.createdAt,character.hasWave,character.hasParty);
     });
   }
@@ -67,6 +73,10 @@ export async function handleLobbyApi(request,env={},options={}){
     if(slot.status!=='joined')return json({error:'Join this player slot before getting ready.'},409);
     if(!host&&(!slot.guestHash||!await tokenMatches(input.guestToken,slot.guestHash)))return json({error:'This device does not control that slot.'},403);
     slot.ready=!!input.ready;
+  });
+  // A default slot is a human on this screen's keyboard or gamepad, playing the built-in dungeon character.
+  if(action==='default')return updateSlot(storage,id,Number(slotValue)-1,now,async(lobby,slot)=>{
+    if(!await tokenMatches(input.hostToken,lobby.hostHash))return json({error:'Only this game screen can add default characters.'},403);openSlot(slot);slot.status='joined';
   });
   return updateSlot(storage,id,Number(slotValue)-1,now,async(lobby,slot)=>{
     if(!await tokenMatches(input.hostToken,lobby.hostHash))return json({error:'Only this game screen can change AI players.'},403);slot.status=input.ai===false?'open':'ai';slot.ready=input.ai===false?false:true;slot.character=null;delete slot.guestHash;

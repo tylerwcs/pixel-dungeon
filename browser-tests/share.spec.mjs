@@ -3,7 +3,7 @@ import {expect,test} from '@playwright/test';
 test('shifted wave cells and differently sized sheets stay centered at the same visible height',async({page})=>{
   await page.goto('/');
   const results=await page.evaluate(async()=>{
-    const {cache}=await import('/render.mjs?v=burst-1'),{drawVideoCharacter}=await import('/animation-export.mjs?v=party-1');
+    const {cache}=await import('/render.mjs?v=walk-1'),{drawVideoCharacter}=await import('/animation-export.mjs?v=walk-1');
     for(const animation of ['wave','walk']){
       const sheet=document.createElement('canvas');sheet.width=sheet.height=512;const ink=sheet.getContext('2d');ink.fillStyle='#fff';
       for(let row=0;row<4;row++)for(let col=0;col<4;col++){
@@ -37,7 +37,7 @@ test('native sharing uses the prepared named MP4 on a fresh tap, and cancellatio
   });
   await page.route('**/share-test',route=>route.fulfill({contentType:'text/html',body:'<link rel="stylesheet" href="/character.css?v=icon-1"><main id="view" class="animation-previews"></main>'}));
   await page.goto('/share-test');
-  await page.evaluate(async()=>{const {mountCharacterView}=await import('/character-view.mjs?v=icon-1');await mountCharacterView(document.querySelector('#view'),{name:'Mina 星',imageUrl:'/assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',wave:{imageUrl:'/assets/monster.png',cols:4,rows:4,fps:6,layout:'directional'}});});
+  await page.evaluate(async()=>{const {mountCharacterView}=await import('/character-view.mjs?v=walk-1');await mountCharacterView(document.querySelector('#view'),{name:'Mina 星',imageUrl:'/assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',wave:{imageUrl:'/assets/monster.png',cols:4,rows:4,fps:6,layout:'directional'}});});
   const card=page.locator('article[data-animation="wave"]'),button=card.getByRole('button',{name:'Download',exact:true});
   await expect(page.getByRole('button',{name:/on black/i})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Download',exact:true})).toHaveCount(2);
@@ -47,5 +47,5 @@ test('native sharing uses the prepared named MP4 on a fresh tap, and cancellatio
   expect(await page.evaluate(()=>({calls:window.shared.length,encodes:window.encodingCount,sameFile:window.shared[0].file===window.shared[1].file,title:window.shared[0].title}))).toEqual({calls:2,encodes:1,sameFile:true,title:'Mina 星 · Ecopialand'});
   const metadata=await page.evaluate(()=>new Promise(resolve=>{const url=URL.createObjectURL(window.shared[0].file),video=document.createElement('video');video.onloadedmetadata=()=>{resolve({width:video.videoWidth,height:video.videoHeight,duration:video.duration});URL.revokeObjectURL(url);};video.src=url;}));expect(metadata).toEqual({width:1080,height:1920,duration:6});
   await expect(page.getByRole('link',{name:/Save/})).toHaveCount(0);
-  const measured=await page.evaluate(async()=>{const {drawVideoBackground}=await import('/animation-export.mjs?v=party-1'),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),fill=ctx.fillText.bind(ctx),calls=[];ctx.fillText=(text,x,y,max)=>{calls.push({text,width:ctx.measureText(text).width,max});fill(text,x,y,max);};drawVideoBackground(ctx,1080,1920,'ABCDEFGHIJKLMNOPQRSTUVWXYZ 星','black');return calls;});expect(measured[0].text).toBe('ABCDEFGHIJKLMNOPQRSTUVWXYZ 星');expect(measured[0].width).toBeLessThanOrEqual(measured[0].max);
+  const measured=await page.evaluate(async()=>{const {drawVideoBackground}=await import('/animation-export.mjs?v=walk-1'),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),fill=ctx.fillText.bind(ctx),calls=[];ctx.fillText=(text,x,y,max)=>{calls.push({text,width:ctx.measureText(text).width,max});fill(text,x,y,max);};drawVideoBackground(ctx,1080,1920,'ABCDEFGHIJKLMNOPQRSTUVWXYZ 星','black');return calls;});expect(measured[0].text).toBe('ABCDEFGHIJKLMNOPQRSTUVWXYZ 星');expect(measured[0].width).toBeLessThanOrEqual(measured[0].max);
 });

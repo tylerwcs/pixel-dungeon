@@ -1,4 +1,4 @@
-import {drawSprite,cache,waveFrame} from './render.mjs?v=burst-1';
+import {drawSprite,cache,waveFrame} from './render.mjs?v=walk-1';
 let frameImage;
 const footAnchors=new Map();
 function footAnchor(source,time=0,direction='down'){

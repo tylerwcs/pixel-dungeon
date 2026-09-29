@@ -69,6 +69,36 @@ test('matchmaking remains usable at the 150-percent zoom-sized viewport', async 
   await expectNoPageOverflow(page);
 });
 
+test('default characters walk in their slots and one corner button clears every slot for the next group', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openLobby(page);
+  const cards = page.locator('.player-card');
+  await cards.nth(1).getByRole('button', { name: /add default character/i }).click();
+  await expect(cards.nth(1).locator('.player-info strong')).toHaveText('Dungeon adventurer');
+  await expect(cards.nth(1).locator('.player-control')).toContainText('ARROW KEYS');
+  await cards.nth(2).getByRole('button', { name: /add ai/i }).click();
+  await expect(cards.nth(2).locator('.player-info strong')).toHaveText('Dungeon monster');
+  for (const index of [0, 1]) {
+    const buttons = await cards.nth(index).locator('.slot-actions').boundingBox(), ready = await cards.nth(index).locator('.ready-button').boundingBox();
+    expect(buttons.y + buttons.height).toBeLessThanOrEqual(ready.y + 1);
+  }
+  // Neither default character has a wave, so both walk in place.
+  const frames = () => page.locator('.portrait').evaluateAll(canvases => canvases.slice(0, 3).map(canvas => canvas.toDataURL()));
+  const before = await frames();
+  await expect.poll(async () => (await frames()).map((frame, index) => frame !== before[index])).toEqual([true, true, true]);
+  await expectNoPageOverflow(page);
+
+  const clear = page.locator('#clearLobby');
+  await clear.click();
+  await expect(clear).toHaveAccessibleName('Tap again to clear all players');
+  await expect(cards.nth(1).locator('.player-info strong')).toHaveText('Dungeon adventurer');
+  await clear.click();
+  await expect(page.locator('.player-card.open')).toHaveCount(4);
+  await expect(page.locator('#humanCount')).toHaveText('0 / 4 HUMAN');
+  await expect(clear).toHaveAccessibleName('Clear all players');
+});
+
 test('a host can fill empty slots with AI and start a real game', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await openLobby(page);

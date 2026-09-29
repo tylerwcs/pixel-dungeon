@@ -4,17 +4,18 @@ const frameCache=new Map();
 export function loadImage(src){if(cache.has(src))return Promise.resolve(cache.get(src));return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{cache.set(src,img);resolve(img);};img.onerror=()=>reject(new Error('This PNG could not be opened.'));img.src=src;});}
 export function characterAsset(character){return {...character,src:character.imageUrl,...(character.wave?{wave:{...character.wave,src:character.wave.imageUrl,anchor:'cell'}}:{})};}
 export async function loadCharacterAsset(character){const asset=characterAsset(character);await loadImage(asset.src);if(asset.wave)await loadImage(asset.wave.src).catch(()=>{});return asset;}
-// Return to neutral between greetings. Old characters and failed wave loads stay still.
+// Return to neutral between greetings. Characters without a wave (the defaults, old characters, failed loads) walk in place instead.
 const waveSequence=[0,1,2,3,2,3,2,1,0,0,0,0,0,0,0,0,0,0];
 const greetingMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
 export function waveFrame(time,fps=6){return waveSequence[Math.floor(Math.max(0,time)*fps)%waveSequence.length];}
 export function drawGreeting(ctx,asset,x,y,size,time=0){
   if(asset.wave&&cache.has(asset.wave.src)){const wave=asset.wave;drawSprite(ctx,wave,x,y,size,(greetingMotion?.matches?1:waveFrame(time,wave.fps))/wave.fps);}
-  else drawSprite(ctx,asset,x,y,size,0,'down',false);
+  else{const still=!!greetingMotion?.matches;drawSprite(ctx,asset,x,y,size,still?0:time,'down',!still);}
 }
 export const defaults={collector:{src:'assets/adventurer.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon adventurer'},pursuer:{src:'assets/monster.png',cols:4,rows:4,fps:8,layout:'directional',name:'Dungeon monster'}};
-// Player 1 defaults to the adventurer and everyone else to the monster; a booth character replaces either.
-export function identityAsset(players,index){return players[index].booth||defaults[index===0?'collector':'pursuer'];}
+// Humans without a booth character play the adventurer and AI players the monster; a booth character replaces either.
+// Without a slot status (a fresh game), Player 1 is the human.
+export function identityAsset(players,index){const player=players[index],human=player.slotStatus?player.slotStatus==='joined':index===0;return player.booth||defaults[human?'collector':'pursuer'];}
 // In-game names: each character's name, numbered with the player slot only when another player shares it.
 export function playerNames(players){
   const names=players.map((_,index)=>identityAsset(players,index).name?.trim()||`Player ${index+1}`),key=name=>name.toLowerCase();

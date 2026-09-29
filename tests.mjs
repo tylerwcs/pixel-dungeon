@@ -248,8 +248,23 @@ test('Start on a gamepad is button 9 only',()=>{
 });
 test('Start toggles ready for the joined player on that pad, one press at a time',()=>{
   const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');
-  assert.match(app,/if\(held&&!startHeld\[player\.control\]\)setReady\(index,!player\.ready\)/);
-  assert.match(app,/player\.slotStatus!=='joined'\|\|!player\.control\.startsWith\('pad:'\)/);
+  assert.match(app,/if\(held&&!startHeld\[control\]\)pressedStart\.add\(control\);startHeld\[control\]=held;/);
+  assert.match(app,/player\.slotStatus==='joined'&&pressedStart\.has\(player\.control\)\)setReady\(index,!player\.ready\)/);
+});
+test('Start on the next collector pad continues after a round, never from the podium',()=>{
+  const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/function canContinue\(control\)\{if\(state\.round>=GAME_ROUNDS\)return true;const next=players\[nextCollector\(players,state\.collector\)\];return next\.slotStatus!=='joined'\|\|!next\.control\.startsWith\('pad:'\)\|\|next\.control===control;\}/);
+  assert.match(app,/!lobby&&state\.phase==='result'&&\$\('podiumScreen'\)\.hidden&&\[\.\.\.pressedStart\]\.some\(canContinue\)\)\$\('continue'\)\?\.click\(\)/);
+});
+test('the lobby auto-starts 3 s after everyone is ready and cancels if someone un-readies',()=>{
+  const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/AUTO_START_DELAY=3000/);
+  assert.match(app,/const armed=lobby&&lobbyDialog\.open&&!lobbyResetting&&humanCount\(\)>0&&everyoneReady\(\);if\(!armed\)\{if\(autoStartAt!==null\)\{autoStartAt=null;renderPlayers\(\);\}return;\}/);
+  assert.match(app,/if\(now>=autoStartAt\)\{autoStartAt=null;start\(\);\}/);assert.match(app,/updateAutoStart\(now\)/);
+});
+test('returning to the lobby opens it before resetting readiness, so the maze never flashes',()=>{
+  const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/async function returnLobby\(\)\{lobby=true;hidePodium\(\);resetScoring\(\);state=newRound\(players,0,1\);lastPhase='';autoStartAt=null;renderPlayers\(\);updateOverlay\(\);openLobby\(\);lobbyResetting=true;try\{await resetLobbyReadiness\(\);\}finally\{lobbyResetting=false;\}renderPlayers\(\);\}/);
 });
 test('a dash plays a whoosh and draws afterimages and a burst puff',()=>{
   const app=fs.readFileSync(new URL('./dist/app.mjs',import.meta.url),'utf8'),render=fs.readFileSync(new URL('./dist/render.mjs',import.meta.url),'utf8');

@@ -7,3 +7,5 @@ test-results/
 *.tar
 
 .vercel
+.env.vercel
+output/gallery/

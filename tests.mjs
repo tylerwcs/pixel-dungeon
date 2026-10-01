@@ -1,4 +1,5 @@
 import './tests/character-jobs.test.mjs';
+import './tests/character-gallery.test.mjs';
 import './tests/booth-sessions.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';

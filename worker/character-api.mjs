@@ -101,7 +101,9 @@ export async function generateSheet(photo,prompt,env,options,useStyleReference=f
 
 export async function handleCharacterApi(request,env={},options={}){
   const url=new URL(request.url),storage=createCharacterStorage(env,options);if(!storage)return json({error:'Shared character storage is not configured.'},503);
-  if(url.pathname==='/api/characters'&&request.method==='GET'){const characters=(await storage.list()).slice(0,60);return json({count:characters.length,characters});}
+  // The lobby shows the newest 60; the post-event gallery asks for everything still stored (up to 100).
+  if(url.pathname==='/api/characters'&&request.method==='GET'){const asked=Number.parseInt(url.searchParams.get('limit'),10),limit=Number.isFinite(asked)?Math.min(100,Math.max(1,asked)):60,characters=(await storage.list(limit)).slice(0,limit);return json({count:characters.length,characters});}
+  const single=url.pathname.match(/^\/api\/characters\/([^/]+)$/);if(single&&request.method==='GET'){const id=single[1],item=validId(id)&&await storage.get(id);if(!item)return json({error:'Character not found.'},404);return json({character:characterRecord(id,item.name||'Player character',item.createdAt||new Date().toISOString(),item.hasWave,item.hasParty)});}
   if(url.pathname==='/api/characters/generate'&&request.method==='POST')return generateCharacter(request,env,options,storage);
   const pass=url.pathname.match(/^\/api\/characters\/([^/]+)\/pass$/);if(pass&&request.method==='POST'){
     if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);const id=pass[1];if(!validId(id))return json({error:'Character not found.'},404);let input;try{input=await request.json();}catch{return json({error:'The character pass could not be read.'},400);}const item=await storage.get(id);if(!item||!await tokenMatches(input.claimToken,item.claimHash))return json({error:'This character pass is invalid.'},403);return json({character:characterRecord(id,item.name||'Player character',item.createdAt||new Date().toISOString(),item.hasWave,item.hasParty)});

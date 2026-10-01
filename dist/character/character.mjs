@@ -1,6 +1,8 @@
 import {readJob,savePass,stageLabels} from '../job-client.mjs?v=party-1';
 import {mountCharacterView} from '../character-view.mjs?v=walk-1';
 const $=id=>document.getElementById(id),id=new URLSearchParams(location.search).get('job'),token=new URLSearchParams(location.hash.slice(1)).get('access');
+// Gallery links open a finished character by id; the booth's job links carry an access token instead.
+const characterId=new URLSearchParams(location.search).get('id');
 // Shared with the join page: it links back here for the videos, and this page links back to its lobby.
 const characterPageKey='pixel-dungeon-character-page',lobbyReturnKey='pixel-dungeon-lobby-return';
 let readyCharacter=null,polling=false,done=false,timer;
@@ -37,5 +39,14 @@ async function refresh(){
 }
 $('retryProgress').onclick=()=>{clearTimeout(timer);refresh();};
 $('createPass').onclick=async()=>{if(!readyCharacter)return;$('createPass').disabled=true;try{await savePass(readyCharacter,token);location.assign(lobbyReturn()||'../join/');}catch(error){$('progressStatus').textContent=error.message;$('progressStatus').classList.add('error');$('createPass').disabled=false;}};
-window.addEventListener('pagehide',()=>{clearTimeout(timer);clearInterval(progressTimer);},{once:true});refresh();
+async function showSaved(){
+  clearInterval(progressTimer);$('jobProgress').hidden=true;$('progressCopy').hidden=true;$('createPass').hidden=true;
+  const back=document.createElement('a');back.className='secondary-button';back.href='/gallery/';back.textContent='← All characters';$('characterReady').after(back);
+  try{
+    const response=await fetch(`/api/characters/${encodeURIComponent(characterId)}`,{cache:'no-store'});if(!response.ok)throw new Error(response.status===404?'This character is no longer available.':'This character could not be loaded. Please try again.');
+    const {character}=await response.json();$('characterTitle').textContent=`Meet ${character.name}`;document.title=`${character.name} · Pixel Dungeon Chase`;
+    await mountCharacterView($('animationPreviews'),character);$('characterReady').hidden=false;
+  }catch(error){$('characterTitle').textContent='Character gallery';$('progressStatus').textContent=error.message;$('progressStatus').classList.add('error');}
+}
+window.addEventListener('pagehide',()=>{clearTimeout(timer);clearInterval(progressTimer);},{once:true});if(characterId)showSaved();else refresh();
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});

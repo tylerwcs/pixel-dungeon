@@ -1,5 +1,6 @@
 import {readJob,savePass,stageLabels} from '../job-client.mjs?v=party-1';
 import {mountCharacterView} from '../character-view.mjs?v=walk-1';
+import {loadSheets} from './sheet-loader.mjs?v=gallery-1';
 const $=id=>document.getElementById(id),id=new URLSearchParams(location.search).get('job'),token=new URLSearchParams(location.hash.slice(1)).get('access');
 // Gallery links open a finished character by id; the booth's job links carry an access token instead.
 const characterId=new URLSearchParams(location.search).get('id');
@@ -39,14 +40,18 @@ async function refresh(){
 }
 $('retryProgress').onclick=()=>{clearTimeout(timer);refresh();};
 $('createPass').onclick=async()=>{if(!readyCharacter)return;$('createPass').disabled=true;try{await savePass(readyCharacter,token);location.assign(lobbyReturn()||'../join/');}catch(error){$('progressStatus').textContent=error.message;$('progressStatus').classList.add('error');$('createPass').disabled=false;}};
+// The three sprite sheets are about 15 MB together, so the pixel counter tracks their download before the videos appear.
 async function showSaved(){
-  clearInterval(progressTimer);$('jobProgress').hidden=true;$('progressCopy').hidden=true;$('createPass').hidden=true;
+  clearInterval(progressTimer);$('createPass').hidden=true;$('characterTitle').textContent='Loading…';$('progressCopy').textContent='Loading the videos…';shown=0;paintProgress();
   const back=document.createElement('a');back.className='secondary-button';back.href='/gallery/';back.textContent='← All characters';$('characterReady').after(back);
   try{
     const response=await fetch(`/api/characters/${encodeURIComponent(characterId)}`,{cache:'no-store'});if(!response.ok)throw new Error(response.status===404?'This character is no longer available.':'This character could not be loaded. Please try again.');
     const {character}=await response.json();$('characterTitle').textContent=`Meet ${character.name}`;document.title=`${character.name} · Pixel Dungeon Chase`;
-    await mountCharacterView($('animationPreviews'),character);$('characterReady').hidden=false;
-  }catch(error){$('characterTitle').textContent='Character gallery';$('progressStatus').textContent=error.message;$('progressStatus').classList.add('error');}
+    const urls=[character.imageUrl,character.wave?.imageUrl,character.party?.imageUrl].filter(Boolean),local=await loadSheets(urls,value=>{shown=value*100;paintProgress();}),localUrl=new Map(urls.map((url,index)=>[url,local[index]]));
+    const withLocal=sheet=>sheet&&{...sheet,imageUrl:localUrl.get(sheet.imageUrl)};
+    await mountCharacterView($('animationPreviews'),{...character,imageUrl:localUrl.get(character.imageUrl),...(character.wave?{wave:withLocal(character.wave)}:{}),...(character.party?{party:withLocal(character.party)}:{})});
+    $('jobProgress').hidden=true;$('progressCopy').hidden=true;$('characterReady').hidden=false;
+  }catch(error){$('jobProgress').hidden=true;$('progressCopy').hidden=true;if($('characterTitle').textContent==='Loading…')$('characterTitle').textContent='Character gallery';$('progressStatus').textContent=error.message;$('progressStatus').classList.add('error');}
 }
 window.addEventListener('pagehide',()=>{clearTimeout(timer);clearInterval(progressTimer);},{once:true});if(characterId)showSaved();else refresh();
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});

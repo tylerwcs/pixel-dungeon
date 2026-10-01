@@ -61,7 +61,7 @@ function memoryStorage(map){return {
 };}
 function r2Storage(bucket){return {
   async list(){const listed=await bucket.list({prefix:'characters/',limit:100,include:['customMetadata']});return listed.objects.map(item=>{const id=item.key.slice('characters/'.length,-'.png'.length),meta=item.customMetadata||{};return characterRecord(id,meta.name||'Booth character',meta.createdAt||item.uploaded.toISOString(),meta.hasWave,meta.hasParty);}).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));},
-  async get(id,animation){const object=await bucket.get(`${animation==='wave'?'character-waves':animation==='party'?'character-parties':'characters'}/${id}.png`);if(!object)return null;return {bytes:object.body,contentType:object.httpMetadata?.contentType||'image/png',etag:object.httpEtag,...object.customMetadata};},
+  async get(id,animation){const object=await bucket.get(`${animation==='wave'?'character-waves':animation==='party'?'character-parties':'characters'}/${id}.png`);if(!object)return null;return {...object.customMetadata,bytes:object.body,size:object.size,contentType:object.httpMetadata?.contentType||'image/png',etag:object.httpEtag};},
   async put(id,bytes,metadata,waveBytes,partyBytes){const settings={httpMetadata:{contentType:'image/png',cacheControl:'public, max-age=31536000, immutable'},customMetadata:metadata};if(partyBytes)await bucket.put(`character-parties/${id}.png`,partyBytes,settings);if(waveBytes)await bucket.put(`character-waves/${id}.png`,waveBytes,settings);await bucket.put(`characters/${id}.png`,bytes,settings);}
 };}
 export function createCharacterStorage(env={},options={}){if(options.characterStorage)return options.characterStorage;if(options.store instanceof Map)return memoryStorage(options.store);if(env.CHARACTERS)return r2Storage(env.CHARACTERS);return null;}
@@ -109,7 +109,7 @@ export async function handleCharacterApi(request,env={},options={}){
     if(!sameOrigin(request))return json({error:'Cross-site requests are not allowed.'},403);const id=pass[1];if(!validId(id))return json({error:'Character not found.'},404);let input;try{input=await request.json();}catch{return json({error:'The character pass could not be read.'},400);}const item=await storage.get(id);if(!item||!await tokenMatches(input.claimToken,item.claimHash))return json({error:'This character pass is invalid.'},403);return json({character:characterRecord(id,item.name||'Player character',item.createdAt||new Date().toISOString(),item.hasWave,item.hasParty)});
   }
   const image=url.pathname.match(/^\/api\/characters\/([^/]+)\/image$/);if(image&&request.method==='GET'){
-    const id=image[1];if(!validId(id))return new Response('Not found',{status:404});const item=await storage.get(id,url.searchParams.get('animation'));if(!item)return new Response('Not found',{status:404});return new Response(item.bytes,{headers:{'content-type':item.contentType||'image/png','cache-control':'public, max-age=31536000, immutable',...(item.etag?{etag:item.etag}:{})}});
+    const id=image[1];if(!validId(id))return new Response('Not found',{status:404});const item=await storage.get(id,url.searchParams.get('animation'));if(!item)return new Response('Not found',{status:404});const size=item.size??item.bytes?.byteLength;return new Response(item.bytes,{headers:{'content-type':item.contentType||'image/png','cache-control':'public, max-age=31536000, immutable',...(Number.isFinite(size)?{'content-length':String(size)}:{}),...(item.etag?{etag:item.etag}:{})}});
   }
   return json({error:'Not found.'},404);
 }
